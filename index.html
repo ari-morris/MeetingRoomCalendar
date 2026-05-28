@@ -40,10 +40,19 @@
     }
 
     .fc .fc-timegrid-slot-label {
-      font-size: 18px !important;
-      font-weight: 600;
-    }
+  font-size: 27px !important; /* 18 × 1.5 */
+  font-weight: 600;
+}
 
+    .fc .fc-timegrid-axis {
+  width: 110px !important;
+      white-space: nowrap;
+}
+
+.fc .fc-timegrid-axis-cushion {
+  font-size: 27px !important;
+}
+    
     .fc .fc-event-title {
       font-size: 18px !important;
     }
@@ -113,7 +122,12 @@ document.addEventListener('DOMContentLoaded', function () {
     slotDuration: "00:30:00",
 
     headerToolbar: false,
-
+    
+slotLabelFormat: {
+  hour: 'numeric',
+  minute: '2-digit',
+  hour12: true
+},
     eventContent: function(arg) {
 
       const desc = (arg.event.extendedProps.description || "")
