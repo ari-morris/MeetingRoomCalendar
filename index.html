@@ -73,13 +73,28 @@ document.addEventListener('DOMContentLoaded', function () {
 
   calendar.render();
 
-  setInterval(() => calendar.refetchEvents(), 300000);
+  // 🔄 refresh every 5 minutes
+  setInterval(() => {
+    calendar.refetchEvents();
+  }, 300000);
 });
+
+
+/* =========================
+   FETCH ICS (FIXED: NO CACHE)
+   ========================= */
 
 async function fetchICSAsEvents(fetchInfo, successCallback, failureCallback) {
   try {
     const proxy = "https://corsproxy.io/?";
-    const res = await fetch(proxy + encodeURIComponent(ICS_URL + "?nocache=" + Date.now()));
+
+    // 🔥 CRITICAL FIX: force fresh data every request
+    const url = ICS_URL + "?nocache=" + Date.now();
+
+    const res = await fetch(proxy + encodeURIComponent(url), {
+      cache: "no-store"
+    });
+
     const text = await res.text();
 
     successCallback(parseICS(text));
@@ -89,6 +104,7 @@ async function fetchICSAsEvents(fetchInfo, successCallback, failureCallback) {
     failureCallback(err);
   }
 }
+
 
 /* =========================
    BULLETPROOF ICS PARSER
@@ -103,7 +119,6 @@ function parseICS(data) {
 
   for (let line of lines) {
 
-    // HANDLE FOLDED LINES (critical fix for Outlook ICS)
     if (line.startsWith(" ") && current && lastKey) {
       current[lastKey] = (current[lastKey] || "") + line.trim();
       continue;
@@ -122,7 +137,7 @@ function parseICS(data) {
       const rawKey = parts[0];
       const value = parts.slice(1).join(":");
 
-      const key = rawKey.split(";")[0]; // remove TZ / LANGUAGE modifiers
+      const key = rawKey.split(";")[0];
       lastKey = key;
 
       if (key === "SUMMARY") current.title = value;
@@ -153,10 +168,14 @@ function parseICS(data) {
   return events;
 }
 
+
+/* =========================
+   DATE PARSER
+   ========================= */
+
 function parseDate(value) {
   if (!value) return null;
 
-  // Outlook format: YYYYMMDDTHHMMSSZ
   return value.replace(
     /(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/,
     "$1-$2-$3T$4:$5:$6Z"
