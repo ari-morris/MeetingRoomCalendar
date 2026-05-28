@@ -30,9 +30,9 @@ document.addEventListener('DOMContentLoaded', function () {
   const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
 
     initialView: 'timeGridDay',
-    nowIndicator: false,
+    nowIndicator: true,
     height: '150vh',
-    allDaySlot: true,
+    allDaySlot: false,
     scrollTime: "06:00:00",
     slotMinTime: "00:00:00",
     slotMaxTime: "23:59:59",
