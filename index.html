@@ -223,7 +223,15 @@ function parseICS(data) {
   return events;
 }
 
-
+/* 🔥 NEW: clean ICS escaped characters */
+function cleanICS(text) {
+  return text
+    .replace(/\\n/g, " ")
+    .replace(/\\,/g, ",")
+    .replace(/\\\\/g, "\\")
+    .trim();
+}
+  
 function parseDate(value) {
   if (!value) return null;
 
