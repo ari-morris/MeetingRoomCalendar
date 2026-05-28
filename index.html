@@ -164,23 +164,10 @@ document.addEventListener('DOMContentLoaded', function () {
       right: ''
     },
 
-    allDaySlot: false,
+    allDaySlot: true,
     slotMinTime: "06:00:00",
     slotMaxTime: "22:00:00",
 
-    // ✅ TEST EVENTS (remove later when working)
-    events: [
-      {
-        title: 'Test Meeting',
-        start: new Date().toISOString().split('T')[0] + 'T10:00:00',
-        end: new Date().toISOString().split('T')[0] + 'T11:00:00'
-      },
-      {
-        title: 'Room Blocked',
-        start: new Date().toISOString().split('T')[0] + 'T13:00:00',
-        end: new Date().toISOString().split('T')[0] + 'T14:30:00'
-      }
-    ]
   });
 
   calendar.render();
