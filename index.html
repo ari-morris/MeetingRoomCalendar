@@ -168,28 +168,29 @@ function expandEvent(event) {
   const end = new Date(parseDate(event.end));
   const duration = end - start;
 
-  const base = {
+  const baseEvent = {
     title: event.title,
+    start,
+    end,
     extendedProps: {
       description: event.description || ""
     }
   };
 
-  // always include original
-  results.push({
-    ...base,
-    start,
-    end
-  });
+  // always include original event
+  results.push(baseEvent);
 
+  // if no RRULE, stop here
   if (!event.rrule) return results;
 
   try {
 
-    // convert RRULE string into rrule.js format
-    const rule = RRule.fromString(event.rrule, {
-      dtstart: start
-    });
+    // SAFE: strip Outlook quirks before parsing
+    const cleanedRule = event.rrule
+      .replace("RRULE:", "")
+      .split("\\n")[0];
+
+    const rule = RRule.fromString(cleanedRule);
 
     const now = new Date();
     const windowStart = new Date(now);
@@ -206,14 +207,17 @@ function expandEvent(event) {
       const instanceEnd = new Date(d.getTime() + duration);
 
       results.push({
-        ...base,
+        title: event.title,
         start: instanceStart,
-        end: instanceEnd
+        end: instanceEnd,
+        extendedProps: {
+          description: event.description || ""
+        }
       });
     }
 
   } catch (e) {
-    console.warn("RRULE parse failed:", event.rrule, e);
+    console.warn("RRULE failed, falling back to base event:", event.rrule, e);
   }
 
   return results;
