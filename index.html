@@ -2,19 +2,18 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Calendar</title>
+  <title>Day View Calendar</title>
 
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css" rel="stylesheet">
-
-  <script src="https://cdn.jsdelivr.net/npm/ical.js@1.4.0/build/ical.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/icalendar@6.1.8/index.global.min.js"></script>
+  <!-- FullCalendar (single stable bundle) -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
   <style>
     body {
       margin: 0;
       font-family: Arial, sans-serif;
     }
+
     #calendar {
       max-width: 100%;
       height: 100vh;
@@ -29,29 +28,42 @@
 <script>
 document.addEventListener('DOMContentLoaded', function () {
 
-  var calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+  const calendarEl = document.getElementById('calendar');
+
+  const calendar = new FullCalendar.Calendar(calendarEl, {
+
+    // ✅ Force Day View
     initialView: 'timeGridDay',
+
     nowIndicator: true,
     height: '100vh',
 
-    headerToolbar: false,
+    headerToolbar: {
+      left: '',
+      center: '',
+      right: ''
+    },
+
     allDaySlot: false,
     slotMinTime: "06:00:00",
     slotMaxTime: "22:00:00",
 
-    events: {
-      url: 'https://api.allorigins.win/raw?url=' + encodeURIComponent(
-        'https://outlook.office365.com/owa/calendar/5ffdab88caa6494b83fdd5a68fd7ba2f@aahom.org/d412bbc8725840fe9ba70863c2c5943115149688986152418268/calendar.ics'
-      ),
-      format: 'ics'
-    }
+    // ✅ TEST EVENTS (remove later when working)
+    events: [
+      {
+        title: 'Test Meeting',
+        start: new Date().toISOString().split('T')[0] + 'T10:00:00',
+        end: new Date().toISOString().split('T')[0] + 'T11:00:00'
+      },
+      {
+        title: 'Room Blocked',
+        start: new Date().toISOString().split('T')[0] + 'T13:00:00',
+        end: new Date().toISOString().split('T')[0] + 'T14:30:00'
+      }
+    ]
   });
 
   calendar.render();
-
-  setInterval(function () {
-    calendar.refetchEvents();
-  }, 300000);
 
 });
 </script>
