@@ -13,10 +13,6 @@
       font-family: Arial, sans-serif;
     }
 
-    #calendar {
-      height: 100vh;
-    }
-
     #pageHeader {
       text-align: center;
       font-size: 42px;
@@ -25,7 +21,6 @@
       border-bottom: 1px solid #ddd;
     }
 
-    /* 📅 NEW: date + time bar */
     #dateTimeBar {
       text-align: center;
       font-size: 18px;
@@ -33,7 +28,11 @@
       color: #444;
     }
 
-    /* Row sizing */
+    #calendar {
+      height: calc(100vh - 110px);
+    }
+
+    /* Row height */
     .fc .fc-timegrid-slot {
       height: 60px !important;
     }
@@ -56,10 +55,7 @@
 <body>
 
 <div id="pageHeader">Meeting Room</div>
-
-<!-- 📅 NEW: date + time display -->
 <div id="dateTimeBar"></div>
-
 <div id="calendar"></div>
 
 <script>
@@ -68,7 +64,7 @@ const ICS_URL =
 "https://outlook.office365.com/owa/calendar/5ffdab88caa6494b83fdd5a68fd7ba2f@aahom.org/bce60bc8ad5945939494295b8daa01148196703426695370791/calendar.ics";
 
 /* =========================
-   LIVE DATE + TIME HEADER
+   DATE + TIME DISPLAY
 ========================= */
 
 function updateDateTime() {
@@ -88,9 +84,13 @@ function updateDateTime() {
     `${dateStr} • ${timeStr}`;
 }
 
+
+/* =========================
+   INIT
+========================= */
+
 document.addEventListener('DOMContentLoaded', function () {
 
-  // start clock
   updateDateTime();
   setInterval(updateDateTime, 1000);
 
@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     initialView: 'timeGridDay',
     nowIndicator: true,
-    height: '100vh',
+    height: '100%',
     allDaySlot: false,
 
     slotMinTime: "07:00:00",
@@ -137,18 +137,23 @@ document.addEventListener('DOMContentLoaded', function () {
       };
     },
 
-    events: fetchICSAsEvents
+    events: fetchICS
   });
 
   calendar.render();
 
+  // refresh every 5 minutes
   setInterval(() => {
     calendar.refetchEvents();
   }, 300000);
 });
 
 
-async function fetchICSAsEvents(fetchInfo, successCallback, failureCallback) {
+/* =========================
+   FETCH ICS
+========================= */
+
+async function fetchICS(fetchInfo, successCallback, failureCallback) {
   try {
     const proxy = "https://corsproxy.io/?";
     const url = ICS_URL + "?nocache=" + Date.now();
@@ -168,9 +173,13 @@ async function fetchICSAsEvents(fetchInfo, successCallback, failureCallback) {
 }
 
 
+/* =========================
+   ICS PARSER (FIXED)
+========================= */
+
 function parseICS(data) {
 
-  // 🔥 STEP 1: unfold lines FIRST (critical fix)
+  // 🔥 Unfold lines FIRST (fixes truncation bug)
   const unfolded = data.replace(/\r?\n[ \t]/g, "");
 
   const lines = unfolded.split(/\r?\n/);
@@ -224,7 +233,10 @@ function parseICS(data) {
 }
 
 
-/* 🔥 NEW: clean ICS escaped characters */
+/* =========================
+   CLEAN ICS TEXT
+========================= */
+
 function cleanICS(text) {
   return text
     .replace(/\\n/g, " ")
@@ -233,9 +245,10 @@ function cleanICS(text) {
     .trim();
 }
 
-  return events;
-}
 
+/* =========================
+   DATE PARSER
+========================= */
 
 function parseDate(value) {
   if (!value) return null;
