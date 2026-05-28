@@ -16,12 +16,6 @@
     #calendar {
       height: 100vh;
     }
-
-    /* make event text wrap nicely */
-    .fc-event-title,
-    .fc-event-time {
-      white-space: normal;
-    }
   </style>
 </head>
 
@@ -46,13 +40,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     headerToolbar: false,
 
-    // ⭐ RENDER EVENTS WITH DESCRIPTION VISIBLE
     eventContent: function(arg) {
-
-      const rawDesc = arg.event.extendedProps.description || "";
-
-      // Clean + truncate description for readability
-      const cleanDesc = rawDesc
+      const desc = (arg.event.extendedProps.description || "")
         .replace(/\n/g, " ")
         .replace(/\s+/g, " ")
         .trim()
@@ -69,12 +58,10 @@ document.addEventListener('DOMContentLoaded', function () {
               ${arg.timeText}
             </div>
 
-            ${
-              cleanDesc
-                ? `<div style="font-size:11px; margin-top:2px; opacity:0.9;">
-                     ${cleanDesc}
-                   </div>`
-                : ''
+            ${desc ? `
+              <div style="font-size:11px; margin-top:2px; opacity:0.9;">
+                ${desc}
+              </div>` : ""
             }
           </div>
         `
@@ -89,11 +76,10 @@ document.addEventListener('DOMContentLoaded', function () {
   setInterval(() => calendar.refetchEvents(), 300000);
 });
 
-// Fetch ICS and convert to events
 async function fetchICSAsEvents(fetchInfo, successCallback, failureCallback) {
   try {
     const proxy = "https://corsproxy.io/?";
-    const res = await fetch(proxy + encodeURIComponent(ICS_URL));
+    const res = await fetch(proxy + encodeURIComponent(ICS_URL + "?nocache=" + Date.now()));
     const text = await res.text();
 
     successCallback(parseICS(text));
@@ -104,46 +90,59 @@ async function fetchICSAsEvents(fetchInfo, successCallback, failureCallback) {
   }
 }
 
-// Minimal ICS parser with description support
+/* =========================
+   BULLETPROOF ICS PARSER
+   ========================= */
+
 function parseICS(data) {
   const lines = data.split(/\r?\n/);
 
   const events = [];
   let current = null;
+  let lastKey = null;
 
   for (let line of lines) {
 
+    // HANDLE FOLDED LINES (critical fix for Outlook ICS)
+    if (line.startsWith(" ") && current && lastKey) {
+      current[lastKey] = (current[lastKey] || "") + line.trim();
+      continue;
+    }
+
     if (line.startsWith("BEGIN:VEVENT")) {
       current = {};
+      lastKey = null;
     }
 
     if (current) {
 
-      if (line.startsWith("SUMMARY:")) {
-        current.title = line.replace("SUMMARY:", "");
-      }
+      const parts = line.split(":");
+      if (parts.length < 2) continue;
 
-      if (line.startsWith("DTSTART")) {
-        current.start = parseDate(line);
-      }
+      const rawKey = parts[0];
+      const value = parts.slice(1).join(":");
 
-      if (line.startsWith("DTEND")) {
-        current.end = parseDate(line);
-      }
+      const key = rawKey.split(";")[0]; // remove TZ / LANGUAGE modifiers
+      lastKey = key;
 
-      if (line.startsWith("DESCRIPTION:")) {
-        current.description = line.replace("DESCRIPTION:", "");
-      }
+      if (key === "SUMMARY") current.title = value;
+      if (key === "DTSTART") current.start = parseDate(value);
+      if (key === "DTEND") current.end = parseDate(value);
+      if (key === "DESCRIPTION") current.description = value;
+      if (key === "LOCATION") current.location = value;
+      if (key === "RRULE") current.rrule = value;
     }
 
     if (line.startsWith("END:VEVENT")) {
       if (current) {
         events.push({
-          title: current.title,
+          title: current.title || "",
           start: current.start,
           end: current.end,
           extendedProps: {
-            description: current.description
+            description: current.description || "",
+            location: current.location || "",
+            rrule: current.rrule || ""
           }
         });
       }
@@ -154,10 +153,10 @@ function parseICS(data) {
   return events;
 }
 
-// Convert ICS datetime to ISO format
-function parseDate(line) {
-  const value = line.split(":")[1];
+function parseDate(value) {
+  if (!value) return null;
 
+  // Outlook format: YYYYMMDDTHHMMSSZ
   return value.replace(
     /(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/,
     "$1-$2-$3T$4:$5:$6Z"
