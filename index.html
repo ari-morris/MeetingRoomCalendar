@@ -23,6 +23,150 @@
 <div id="calendar"></div>
 
 <script>
+const ICS_URL =
+"https://outlook.office365.com/owa/calendar/5ffdab88caa6494b83fdd5a68fd7ba2f@aahom.org/bce60bc8ad5945939494295b8daa01148196703426695370791/calendar.ics";
+
+document.addEventListener('DOMContentLoaded', function () {
+
+  const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+
+    initialView: 'timeGridDay',
+    nowIndicator: true,
+    height: '100vh',
+    allDaySlot: false,
+
+    slotMinTime: "00:00:00",
+    slotMaxTime: "23:59:59",
+
+    headerToolbar: false,
+
+    // ⭐ THIS is what adds “details view”
+    eventClick: function(info) {
+      alert(
+        "Title: " + info.event.title + "\n\n" +
+        "Start: " + info.event.start + "\n" +
+        "End: " + info.event.end + "\n\n" +
+        "Description: " + (info.event.extendedProps.description || "None") + "\n" +
+        "Location: " + (info.event.extendedProps.location || "None")
+      );
+    },
+
+    events: fetchICSAsEvents
+  });
+
+  calendar.render();
+
+  setInterval(() => calendar.refetchEvents(), 300000);
+});
+
+async function fetchICSAsEvents(fetchInfo, successCallback, failureCallback) {
+  try {
+    const proxy = "https://corsproxy.io/?";
+    const res = await fetch(proxy + encodeURIComponent(ICS_URL));
+    const text = await res.text();
+
+    successCallback(parseICS(text));
+
+  } catch (err) {
+    console.error(err);
+    failureCallback(err);
+  }
+}
+
+// ✅ FIXED parser with details support
+function parseICS(data) {
+  const lines = data.split(/\r?\n/);
+
+  const events = [];
+  let current = null;
+
+  for (let line of lines) {
+
+    if (line.startsWith("BEGIN:VEVENT")) {
+      current = {};
+    }
+
+    if (current) {
+
+      if (line.startsWith("SUMMARY:")) {
+        current.title = line.replace("SUMMARY:", "");
+      }
+
+      if (line.startsWith("DTSTART")) {
+        current.start = parseDate(line);
+      }
+
+      if (line.startsWith("DTEND")) {
+        current.end = parseDate(line);
+      }
+
+      // ⭐ ADD THESE TWO (this is what you were missing)
+      if (line.startsWith("DESCRIPTION:")) {
+        current.description = line.replace("DESCRIPTION:", "");
+      }
+
+      if (line.startsWith("LOCATION:")) {
+        current.location = line.replace("LOCATION:", "");
+      }
+    }
+
+    if (line.startsWith("END:VEVENT")) {
+      if (current) {
+        events.push({
+          title: current.title,
+          start: current.start,
+          end: current.end,
+
+          // ⭐ IMPORTANT: FullCalendar stores extras here
+          extendedProps: {
+            description: current.description,
+            location: current.location
+          }
+        });
+      }
+      current = null;
+    }
+  }
+
+  return events;
+}
+
+function parseDate(line) {
+  const value = line.split(":")[1];
+
+  return value.replace(
+    /(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/,
+    "$1-$2-$3T$4:$5:$6Z"
+  );
+}
+</script>
+
+</body>
+</html><!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Outlook Calendar (Day View)</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    #calendar {
+      height: 100vh;
+    }
+  </style>
+</head>
+
+<body>
+<div id="calendar"></div>
+
+<script>
 const ICS_URL = "https://outlook.office365.com/owa/calendar/5ffdab88caa6494b83fdd5a68fd7ba2f@aahom.org/bce60bc8ad5945939494295b8daa01148196703426695370791/calendar.ics";
 
 document.addEventListener('DOMContentLoaded', function () {
