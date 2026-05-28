@@ -17,9 +17,9 @@
       height: 100vh;
     }
 
-    /* 🔥 Make time grid rows MUCH taller */
+    /* 🔥 Reduced row height by 1/3 (90px → 60px) */
     .fc .fc-timegrid-slot {
-      height: 90px !important; /* ~3× default size */
+      height: 60px !important;
     }
 
     .fc .fc-timegrid-slot-label {
@@ -54,11 +54,9 @@ document.addEventListener('DOMContentLoaded', function () {
     height: '100vh',
     allDaySlot: false,
 
-    /* ⏰ LIMIT VIEW RANGE */
     slotMinTime: "07:00:00",
     slotMaxTime: "20:00:00",
 
-    /* 🔥 BIGGER TIME STEPS = cleaner large display */
     slotDuration: "00:30:00",
 
     headerToolbar: false,
@@ -69,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function () {
         .replace(/\n/g, " ")
         .replace(/\s+/g, " ")
         .trim()
-        .substring(0, 200); // allow more text since fonts are larger
+        .substring(0, 200);
 
       return {
         html: `
@@ -97,21 +95,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
   calendar.render();
 
-  // 🔄 refresh every 5 minutes
   setInterval(() => {
     calendar.refetchEvents();
   }, 300000);
 });
 
 
-/* =========================
-   FETCH ICS
-========================= */
-
 async function fetchICSAsEvents(fetchInfo, successCallback, failureCallback) {
   try {
     const proxy = "https://corsproxy.io/?";
-
     const url = ICS_URL + "?nocache=" + Date.now();
 
     const res = await fetch(proxy + encodeURIComponent(url), {
@@ -128,10 +120,6 @@ async function fetchICSAsEvents(fetchInfo, successCallback, failureCallback) {
   }
 }
 
-
-/* =========================
-   ICS PARSER
-========================= */
 
 function parseICS(data) {
   const lines = data.split(/\r?\n/);
@@ -191,10 +179,6 @@ function parseICS(data) {
   return events;
 }
 
-
-/* =========================
-   DATE PARSER
-========================= */
 
 function parseDate(value) {
   if (!value) return null;
