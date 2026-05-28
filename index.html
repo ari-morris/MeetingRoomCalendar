@@ -169,59 +169,69 @@ async function fetchICSAsEvents(fetchInfo, successCallback, failureCallback) {
 
 
 function parseICS(data) {
-  const lines = data.split(/\r?\n/);
+
+  // 🔥 STEP 1: unfold lines FIRST (critical fix)
+  const unfolded = data.replace(/\r?\n[ \t]/g, "");
+
+  const lines = unfolded.split(/\r?\n/);
 
   const events = [];
   let current = null;
-  let lastKey = null;
 
   for (let line of lines) {
 
-    if (line.startsWith(" ") && current && lastKey) {
-      current[lastKey] = (current[lastKey] || "") + line.trim();
-      continue;
-    }
-
     if (line.startsWith("BEGIN:VEVENT")) {
       current = {};
-      lastKey = null;
-    }
-
-    if (current) {
-
-      const parts = line.split(":");
-      if (parts.length < 2) continue;
-
-      const rawKey = parts[0];
-      const value = parts.slice(1).join(":");
-
-      const key = rawKey.split(";")[0];
-      lastKey = key;
-
-      if (key === "SUMMARY") current.title = value;
-      if (key === "DTSTART") current.start = parseDate(value);
-      if (key === "DTEND") current.end = parseDate(value);
-      if (key === "DESCRIPTION") current.description = value;
-      if (key === "LOCATION") current.location = value;
-      if (key === "RRULE") current.rrule = value;
+      continue;
     }
 
     if (line.startsWith("END:VEVENT")) {
       if (current) {
         events.push({
-          title: current.title || "",
+          title: cleanICS(current.title || ""),
           start: current.start,
           end: current.end,
           extendedProps: {
-            description: current.description || "",
-            location: current.location || "",
+            description: cleanICS(current.description || ""),
+            location: cleanICS(current.location || ""),
             rrule: current.rrule || ""
           }
         });
       }
       current = null;
+      continue;
     }
+
+    if (!current) continue;
+
+    const parts = line.split(":");
+    if (parts.length < 2) continue;
+
+    const rawKey = parts[0];
+    const value = parts.slice(1).join(":");
+
+    const key = rawKey.split(";")[0];
+
+    if (key === "SUMMARY") current.title = value;
+    if (key === "DTSTART") current.start = parseDate(value);
+    if (key === "DTEND") current.end = parseDate(value);
+    if (key === "DESCRIPTION") current.description = value;
+    if (key === "LOCATION") current.location = value;
+    if (key === "RRULE") current.rrule = value;
   }
+
+  return events;
+}
+
+
+/* 🔥 NEW: clean ICS escaped characters */
+function cleanICS(text) {
+  return text
+    .replace(/\\n/g, " ")
+    .replace(/\\,/g, ",")
+    .replace(/\\\\/g, "\\")
+    .trim();
+}
 
   return events;
 }
