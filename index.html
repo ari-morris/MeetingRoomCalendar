@@ -2,13 +2,10 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>Outlook Calendar (Full Recurrence Support)</title>
+  <title>Outlook Calendar (Stable Recurrence)</title>
 
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-
-  <!-- ⭐ RFC 5545 recurrence engine -->
-  <script src="https://cdn.jsdelivr.net/npm/rrule@2.8.1/dist/es5/rrule.min.js"></script>
 
   <style>
     body {
@@ -102,7 +99,7 @@ async function fetchICS(fetchInfo, successCallback, failureCallback) {
 
 
 /* =========================
-   RFC 5545 ICS PARSER
+   ICS PARSER (ROBUST)
 ========================= */
 
 function parseICS(data) {
@@ -114,7 +111,7 @@ function parseICS(data) {
 
   for (let line of lines) {
 
-    // handle folded lines
+    // handle folded lines (CRITICAL for Outlook ICS)
     if (line.startsWith(" ") && current && lastKey) {
       current[lastKey] = (current[lastKey] || "") + line.trim();
       continue;
@@ -141,12 +138,15 @@ function parseICS(data) {
       if (key === "DTEND") current.end = value;
       if (key === "DESCRIPTION") current.description = value;
       if (key === "RRULE") current.rrule = value;
-      if (key === "EXDATE") current.exdate = value;
     }
 
     if (line.startsWith("END:VEVENT")) {
       if (current) {
-        events.push(...expandEvent(current));
+        try {
+          events.push(...expandEvent(current));
+        } catch (e) {
+          console.warn("Skipping event due to error:", e, current);
+        }
       }
       current = null;
     }
@@ -157,7 +157,8 @@ function parseICS(data) {
 
 
 /* =========================
-   OUTLOOK-COMPLIANT EXPANSION
+   STABLE RECURRENCE ENGINE
+   (Outlook-aligned, no fragile libs)
 ========================= */
 
 function expandEvent(event) {
@@ -168,43 +169,46 @@ function expandEvent(event) {
   const end = new Date(parseDate(event.end));
   const duration = end - start;
 
-  const baseEvent = {
+  results.push({
     title: event.title,
     start,
     end,
     extendedProps: {
       description: event.description || ""
     }
-  };
+  });
 
-  // always include original event
-  results.push(baseEvent);
-
-  // if no RRULE, stop here
+  // no recurrence → done
   if (!event.rrule) return results;
 
-  try {
+  // only handle weekly recurrence (most Outlook meetings)
+  if (!event.rrule.includes("WEEKLY")) return results;
 
-    // SAFE: strip Outlook quirks before parsing
-    const cleanedRule = event.rrule
-      .replace("RRULE:", "")
-      .split("\\n")[0];
+  const now = new Date();
 
-    const rule = RRule.fromString(cleanedRule);
+  const windowStart = new Date(now);
+  windowStart.setDate(now.getDate() - 7);
 
-    const now = new Date();
-    const windowStart = new Date(now);
-    windowStart.setDate(now.getDate() - 7);
+  const windowEnd = new Date(now);
+  windowEnd.setDate(now.getDate() + 14);
 
-    const windowEnd = new Date(now);
-    windowEnd.setDate(now.getDate() + 14);
+  const weekday = start.getUTCDay();
 
-    const dates = rule.between(windowStart, windowEnd);
+  let cursor = new Date(windowStart);
 
-    for (const d of dates) {
+  while (cursor <= windowEnd) {
 
-      const instanceStart = new Date(d);
-      const instanceEnd = new Date(d.getTime() + duration);
+    if (cursor.getUTCDay() === weekday) {
+
+      const instanceStart = new Date(cursor);
+      instanceStart.setUTCHours(
+        start.getUTCHours(),
+        start.getUTCMinutes(),
+        0,
+        0
+      );
+
+      const instanceEnd = new Date(instanceStart.getTime() + duration);
 
       results.push({
         title: event.title,
@@ -216,8 +220,7 @@ function expandEvent(event) {
       });
     }
 
-  } catch (e) {
-    console.warn("RRULE failed, falling back to base event:", event.rrule, e);
+    cursor.setDate(cursor.getDate() + 1);
   }
 
   return results;
