@@ -2,6 +2,125 @@
 <html>
 <head>
   <meta charset="utf-8" />
+  <title>Outlook Calendar (Day View)</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    #calendar {
+      height: 100vh;
+    }
+  </style>
+</head>
+
+<body>
+<div id="calendar"></div>
+
+<script>
+const ICS_URL = "https://outlook.office365.com/owa/calendar/5ffdab88caa6494b83fdd5a68fd7ba2f@aahom.org/bce60bc8ad5945939494295b8daa01148196703426695370791/calendar.ics";
+
+document.addEventListener('DOMContentLoaded', function () {
+
+  const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
+
+    initialView: 'timeGridDay',
+    nowIndicator: true,
+    height: '100vh',
+    allDaySlot: false,
+    slotMinTime: "06:00:00",
+    slotMaxTime: "22:00:00",
+
+    headerToolbar: false,
+
+    events: fetchICSAsEvents
+  });
+
+  calendar.render();
+
+  // refresh every 5 min
+  setInterval(() => calendar.refetchEvents(), 300000);
+});
+
+async function fetchICSAsEvents(fetchInfo, successCallback, failureCallback) {
+  try {
+
+    // ✅ stable CORS proxy (much more reliable than allorigins)
+    const proxy = "https://corsproxy.io/?";
+
+    const res = await fetch(proxy + encodeURIComponent(ICS_URL));
+    const text = await res.text();
+
+    const events = parseICS(text);
+
+    successCallback(events);
+
+  } catch (err) {
+    console.error(err);
+    failureCallback(err);
+  }
+}
+
+// Minimal ICS parser (robust enough for Outlook feeds)
+function parseICS(data) {
+  const lines = data.split(/\r?\n/);
+
+  const events = [];
+  let current = null;
+
+  for (let line of lines) {
+
+    if (line.startsWith("BEGIN:VEVENT")) {
+      current = {};
+    }
+
+    if (current) {
+      if (line.startsWith("SUMMARY:")) {
+        current.title = line.replace("SUMMARY:", "");
+      }
+
+      if (line.startsWith("DTSTART")) {
+        current.start = parseDate(line);
+      }
+
+      if (line.startsWith("DTEND")) {
+        current.end = parseDate(line);
+      }
+    }
+
+    if (line.startsWith("END:VEVENT")) {
+      if (current) events.push(current);
+      current = null;
+    }
+  }
+
+  return events;
+}
+
+// Converts ICS datetime to ISO
+function parseDate(line) {
+  const value = line.split(":")[1];
+
+  // Outlook format: YYYYMMDDTHHMMSSZ
+  const formatted = value.replace(
+    /(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/,
+    "$1-$2-$3T$4:$5:$6Z"
+  );
+
+  return formatted;
+}
+</script>
+
+</body>
+</html><!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
   <title>Day View Calendar</title>
 
   <!-- FullCalendar (single stable bundle) -->
