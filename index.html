@@ -245,17 +245,3 @@ function parseDate(value) {
 
 </body>
 </html>
-
-function parseDate(value) {
-  if (!value) return null;
-
-  return value.replace(
-    /(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/,
-    "$1-$2-$3T$4:$5:$6Z"
-  );
-}
-
-</script>
-
-</body>
-</html>
