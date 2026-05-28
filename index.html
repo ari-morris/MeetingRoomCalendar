@@ -16,6 +16,24 @@
     #calendar {
       height: 100vh;
     }
+
+    /* 🔥 Make time grid rows MUCH taller */
+    .fc .fc-timegrid-slot {
+      height: 90px !important; /* ~3× default size */
+    }
+
+    .fc .fc-timegrid-slot-label {
+      font-size: 18px !important;
+      font-weight: 600;
+    }
+
+    .fc .fc-event-title {
+      font-size: 18px !important;
+    }
+
+    .fc .fc-event {
+      font-size: 16px !important;
+    }
   </style>
 </head>
 
@@ -23,6 +41,7 @@
 <div id="calendar"></div>
 
 <script>
+
 const ICS_URL =
 "https://outlook.office365.com/owa/calendar/5ffdab88caa6494b83fdd5a68fd7ba2f@aahom.org/bce60bc8ad5945939494295b8daa01148196703426695370791/calendar.ics";
 
@@ -35,31 +54,36 @@ document.addEventListener('DOMContentLoaded', function () {
     height: '100vh',
     allDaySlot: false,
 
-    slotMinTime: "00:00:00",
-    slotMaxTime: "23:59:59",
+    /* ⏰ LIMIT VIEW RANGE */
+    slotMinTime: "07:00:00",
+    slotMaxTime: "20:00:00",
+
+    /* 🔥 BIGGER TIME STEPS = cleaner large display */
+    slotDuration: "00:30:00",
 
     headerToolbar: false,
 
     eventContent: function(arg) {
+
       const desc = (arg.event.extendedProps.description || "")
         .replace(/\n/g, " ")
         .replace(/\s+/g, " ")
         .trim()
-        .substring(0, 140);
+        .substring(0, 200); // allow more text since fonts are larger
 
       return {
         html: `
-          <div style="padding:2px; line-height:1.2;">
-            <div style="font-weight:bold; font-size:13px;">
+          <div style="padding:6px; line-height:1.3;">
+            <div style="font-weight:bold; font-size:26px;">
               ${arg.event.title}
             </div>
 
-            <div style="font-size:11px; opacity:0.75;">
+            <div style="font-size:18px; opacity:0.8;">
               ${arg.timeText}
             </div>
 
             ${desc ? `
-              <div style="font-size:11px; margin-top:2px; opacity:0.9;">
+              <div style="font-size:18px; margin-top:6px; opacity:0.9;">
                 ${desc}
               </div>` : ""
             }
@@ -81,14 +105,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
 
 /* =========================
-   FETCH ICS (FIXED: NO CACHE)
-   ========================= */
+   FETCH ICS
+========================= */
 
 async function fetchICSAsEvents(fetchInfo, successCallback, failureCallback) {
   try {
     const proxy = "https://corsproxy.io/?";
 
-    // 🔥 CRITICAL FIX: force fresh data every request
     const url = ICS_URL + "?nocache=" + Date.now();
 
     const res = await fetch(proxy + encodeURIComponent(url), {
@@ -107,8 +130,8 @@ async function fetchICSAsEvents(fetchInfo, successCallback, failureCallback) {
 
 
 /* =========================
-   BULLETPROOF ICS PARSER
-   ========================= */
+   ICS PARSER
+========================= */
 
 function parseICS(data) {
   const lines = data.split(/\r?\n/);
@@ -171,7 +194,7 @@ function parseICS(data) {
 
 /* =========================
    DATE PARSER
-   ========================= */
+========================= */
 
 function parseDate(value) {
   if (!value) return null;
@@ -181,6 +204,7 @@ function parseDate(value) {
     "$1-$2-$3T$4:$5:$6Z"
   );
 }
+
 </script>
 
 </body>
