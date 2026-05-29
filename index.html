@@ -76,7 +76,7 @@
 
 <body>
 
-<div id="pageHeader">Meeting Room test</div>
+<div id="pageHeader">Meeting Room test2</div>
 <div id="dateTimeBar"></div>
 <div id="calendar"></div>
 
@@ -186,7 +186,8 @@ async function fetchICS(fetchInfo, successCallback, failureCallback) {
     const text = await res.text();
 
     const events = parseICS(text);
-successCallback(events);
+const expanded = expandRecurring(events);
+successCallback(expanded);
 
   } catch (err) {
     console.error(err);
