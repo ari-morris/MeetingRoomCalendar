@@ -1,323 +1,427 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Meeting Room</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AAHOM Calendar</title>
 
-  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+  <!-- FullCalendar -->
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.11/index.global.min.css" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.11/index.global.min.js"></script>
 
-  <!-- RRule engine -->
-  <script src="https://cdn.jsdelivr.net/npm/rrule@2.8.1/dist/es5/rrule.min.js"></script>
+  <!-- iCal parser: ical.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ical.js/1.5.0/ical.min.js"></script>
 
   <style>
-    body { margin:0; font-family:Arial; }
+    @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
 
-    #calendar {
-      height: calc(100vh - 150px);
-      font-size: 24px;
+    :root {
+      --ink:       #1a1a2e;
+      --paper:     #f8f5f0;
+      --accent:    #c0392b;
+      --accent2:   #e67e22;
+      --muted:     #7f8c8d;
+      --border:    #ddd8d0;
+      --card:      #ffffff;
+      --today-bg:  #fff8f0;
+      --shadow:    0 2px 16px rgba(0,0,0,0.07);
     }
 
-    #pageHeader {
-      text-align:center;
-      font-size:100px;
-      font-weight:700;
-      padding:12px 0;
-      border-bottom:1px solid #ddd;
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: 'DM Sans', sans-serif;
     }
 
-    #dateTimeBar {
-      text-align:center;
-      font-size:48px;
-      padding:8px;
-      color:#444;
+    /* ── Layout ── */
+    .app {
+      display: grid;
+      grid-template-rows: auto 1fr;
+      min-height: 100vh;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px 40px;
     }
 
-    .fc .fc-timegrid-slot { height:72px !important; }
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      padding: 36px 0 28px;
+      border-bottom: 2px solid var(--ink);
+      margin-bottom: 32px;
+    }
+
+    .header h1 {
+      font-family: 'DM Serif Display', serif;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1;
+      letter-spacing: -0.02em;
+    }
+
+    .header .pill {
+      background: var(--accent);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .header .sync-status {
+      margin-left: auto;
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 300;
+      white-space: nowrap;
+    }
+
+    /* ── Calendar wrapper ── */
+    #calendar-wrap {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      box-shadow: var(--shadow);
+      padding: 24px;
+      overflow: hidden;
+    }
+
+    /* ── FullCalendar overrides ── */
+    .fc {
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    /* toolbar */
+    .fc .fc-toolbar {
+      margin-bottom: 20px;
+      gap: 12px;
+    }
+
+    .fc .fc-toolbar-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 22px;
+      letter-spacing: -0.01em;
+    }
+
+    .fc .fc-button {
+      background: var(--ink) !important;
+      border: none !important;
+      border-radius: 3px !important;
+      font-family: 'DM Sans', sans-serif !important;
+      font-size: 12px !important;
+      font-weight: 500 !important;
+      letter-spacing: 0.05em !important;
+      padding: 7px 14px !important;
+      transition: opacity 0.15s !important;
+    }
+
+    .fc .fc-button:hover { opacity: 0.75 !important; }
+    .fc .fc-button-active { background: var(--accent) !important; }
+    .fc .fc-button:focus { box-shadow: none !important; }
+
+    /* today button distinct */
+    .fc .fc-today-button {
+      background: transparent !important;
+      border: 1.5px solid var(--ink) !important;
+      color: var(--ink) !important;
+    }
+    .fc .fc-today-button:hover { background: var(--ink) !important; color: #fff !important; }
+
+    /* time slots */
+    .fc .fc-timegrid-slot {
+      height: 44px !important;
+      border-color: var(--border) !important;
+    }
 
     .fc .fc-timegrid-slot-label {
-      font-size:27px !important;
-      font-weight:600;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
     }
 
-    .fc .fc-timegrid-axis { width:130px !important; }
-
-    .fc .fc-timegrid-axis-cushion {
-      font-size:27px !important;
-      padding:10px;
-      white-space:nowrap;
+    /* today column */
+    .fc .fc-day-today {
+      background: var(--today-bg) !important;
     }
 
-    .fc .fc-col-header { display:none !important; }
+    /* column header */
+    .fc .fc-col-header-cell {
+      border-bottom: 2px solid var(--border) !important;
+      padding: 10px 0 !important;
+    }
+
+    .fc .fc-col-header-cell-cushion {
+      font-family: 'DM Serif Display', serif;
+      font-size: 18px;
+      color: var(--ink);
+      text-decoration: none !important;
+    }
+
+    /* events */
+    .fc-event {
+      border: none !important;
+      border-radius: 3px !important;
+      font-size: 12px !important;
+      font-weight: 500 !important;
+      padding: 3px 7px !important;
+      cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.12) !important;
+    }
+
+    .fc-event .fc-event-title {
+      font-weight: 600;
+    }
+
+    .fc-event .fc-event-time {
+      font-weight: 300;
+      opacity: 0.85;
+    }
+
+    /* all-day */
+    .fc .fc-daygrid-event {
+      border-radius: 3px !important;
+    }
+
+    /* scrollbar */
+    .fc-scroller::-webkit-scrollbar { width: 6px; }
+    .fc-scroller::-webkit-scrollbar-track { background: transparent; }
+    .fc-scroller::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── Loading / Error states ── */
+    #status {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--muted);
+      padding: 12px 0 4px;
+    }
+    #status.visible { display: flex; }
+
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #status.error { color: var(--accent); }
+    #status.error .spinner { display: none; }
+
+    /* ── Event tooltip ── */
+    .tooltip {
+      position: fixed;
+      z-index: 9999;
+      background: var(--ink);
+      color: #fff;
+      border-radius: 5px;
+      padding: 10px 14px;
+      max-width: 280px;
+      font-size: 12.5px;
+      line-height: 1.5;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.15s, transform 0.15s;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+    }
+    .tooltip.show { opacity: 1; transform: translateY(0); }
+    .tooltip strong { font-family: 'DM Serif Display', serif; font-size: 14px; display: block; margin-bottom: 4px; }
+    .tooltip .tip-time { color: var(--accent2); font-weight: 500; margin-bottom: 4px; }
+    .tooltip .tip-loc { color: #ccc; }
   </style>
 </head>
-
 <body>
 
-<div id="pageHeader">Meeting Room no, really</div>
-<div id="dateTimeBar"></div>
-<div id="calendar"></div>
+<div class="app">
+  <header class="header">
+    <h1>AAHOM Events</h1>
+    <span class="pill">Live Calendar</span>
+    <span class="sync-status" id="sync-status"></span>
+  </header>
+
+  <div>
+    <div id="status" class="visible">
+      <span class="spinner"></span>
+      <span id="status-text">Fetching calendar events…</span>
+    </div>
+    <div id="calendar-wrap">
+      <div id="calendar"></div>
+    </div>
+  </div>
+</div>
+
+<div class="tooltip" id="tooltip">
+  <strong id="tip-title"></strong>
+  <div class="tip-time" id="tip-time"></div>
+  <div class="tip-loc" id="tip-loc"></div>
+</div>
 
 <script>
+// ── Config ──────────────────────────────────────────────────────────────────
+const ICS_URL = 'https://outlook.office365.com/owa/calendar/5ffdab88caa6494b83fdd5a68fd7ba2f@aahom.org/bce60bc8ad5945939494295b8daa01148196703426695370791/calendar.ics';
 
-const ICS_URL = "https://outlook.office365.com/owa/calendar/5ffdab88caa6494b83fdd5a68fd7ba2f@aahom.org/bce60bc8ad5945939494295b8daa01148196703426695370791/calendar.ics";
+// CORS proxy — uses allorigins which returns JSON with .contents
+const PROXY = url => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
 
-/* =========================
-   CLOCK
-========================= */
+// ── Colour palette for events ────────────────────────────────────────────────
+const PALETTE = ['#c0392b','#d35400','#8e44ad','#16a085','#2980b9','#27ae60'];
+const colorFor = str => PALETTE[Math.abs([...str].reduce((h,c)=>h*31+c.charCodeAt(0)|0,0)) % PALETTE.length];
 
-function updateDateTime() {
-  const now = new Date();
+// ── Tooltip ──────────────────────────────────────────────────────────────────
+const tooltip   = document.getElementById('tooltip');
+const tipTitle  = document.getElementById('tip-title');
+const tipTime   = document.getElementById('tip-time');
+const tipLoc    = document.getElementById('tip-loc');
 
-  const dateStr = now.toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'long',
-    day: 'numeric'
-  });
+function showTip(info) {
+  const { event, jsEvent } = info;
+  tipTitle.textContent = event.title;
+  const fmt = d => d ? d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+  tipTime.textContent  = event.allDay
+    ? 'All day'
+    : `${fmt(event.start)} – ${fmt(event.end)}`;
+  const loc = event.extendedProps.location || '';
+  tipLoc.textContent   = loc;
+  tipLoc.style.display = loc ? 'block' : 'none';
 
-  const timeStr = now.toLocaleTimeString(undefined, {
-    hour: 'numeric',
-    minute: '2-digit'
-  });
-
-  document.getElementById("dateTimeBar").innerHTML =
-    `${dateStr} • ${timeStr}`;
+  positionTip(jsEvent);
+  tooltip.classList.add('show');
 }
 
-/* =========================
-   INIT
-========================= */
+function positionTip(e) {
+  const pad = 14, TW = 280;
+  let x = e.clientX + pad, y = e.clientY + pad;
+  if (x + TW > window.innerWidth) x = e.clientX - TW - pad;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top  = y + 'px';
+}
 
-document.addEventListener('DOMContentLoaded', function () {
-
-  updateDateTime();
-  setInterval(updateDateTime, 1000);
-
-  const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
-
-    initialView: 'timeGridDay',
-    nowIndicator: true,
-    allDaySlot: false,
-
-    slotMinTime: "08:00:00",
-    slotMaxTime: "19:00:00",
-
-    headerToolbar: false,
-
-    slotLabelFormat: {
-      hour: 'numeric',
-      minute: '2-digit'
-    },
-
-    eventContent: function(arg) {
-      const desc = (arg.event.extendedProps.description || "")
-        .replace(/\n/g," ")
-        .trim()
-        .substring(0,400);
-
-      return {
-        html: `
-          <div style="padding:6px;">
-            <div style="font-size:26px;font-weight:bold;">
-              ${arg.event.title}
-            </div>
-            <div style="font-size:18px;">
-              ${arg.timeText}
-            </div>
-            ${desc ? `<div style="font-size:18px;">${desc}</div>` : ""}
-          </div>
-        `
-      };
-    },
-
-    events: fetchICS
-  });
-
-  calendar.render();
-  setInterval(()=>calendar.refetchEvents(),300000);
+document.addEventListener('mousemove', e => {
+  if (tooltip.classList.contains('show')) positionTip(e);
 });
 
-/* =========================
-   FETCH + FULL ENGINE
-========================= */
+function hideTip() { tooltip.classList.remove('show'); }
 
-async function fetchICS(fetchInfo, successCallback, failureCallback) {
-  try {
+// ── ICS parsing ──────────────────────────────────────────────────────────────
+function parseICS(raw) {
+  const jcal  = ICAL.parse(raw);
+  const comp   = new ICAL.Component(jcal);
+  const vevents = comp.getAllSubcomponents('vevent');
+  const events  = [];
 
-    const proxy = "https://corsproxy.io/?";
-    const res = await fetch(proxy + encodeURIComponent(ICS_URL + "?nocache=" + Date.now()));
-    const text = await res.text();
-
-    const parsed = parseICS(text);
-    const expanded = expandAll(parsed);
-
-    successCallback(expanded);
-
-  } catch (e) {
-    console.error(e);
-    failureCallback(e);
-  }
-}
-
-/* =========================
-   FULL OUTLOOK ENGINE
-========================= */
-
-function expandAll(events) {
-
-  const results = [];
-  const overrides = {};
-
-  const now = new Date();
-
-  const windowStart = new Date(now);
-  windowStart.setDate(now.getDate() - 2);
-
-  const windowEnd = new Date(now);
-  windowEnd.setDate(now.getDate() + 7);
-
-  // Separate overrides
-  events.forEach(e => {
-    if (e.recurrenceId) {
-      overrides[e.uid + "_" + e.recurrenceId] = e;
-    }
-  });
-
-  events.forEach(e => {
-
-    const start = new Date(parseDate(e.start));
-    const end = new Date(parseDate(e.end));
-    const duration = end - start;
-
-    // NON-RECURRING
-    if (!e.rrule) {
-      results.push(formatEvent(e, start, end));
-      return;
-    }
-
+  vevents.forEach(ve => {
     try {
-      const options = RRule.parseString(e.rrule);
-      options.dtstart = start;
+      const ev      = new ICAL.Event(ve);
+      const dtstart = ev.startDate;
+      const dtend   = ev.endDate;
+      if (!dtstart) return;
 
-      const rule = new RRule(options);
+      const isAllDay = dtstart.isDate;
+      const start    = dtstart.toJSDate();
+      const end      = dtend   ? dtend.toJSDate() : null;
 
-      const dates = rule.between(windowStart, windowEnd, true);
-
-      dates.forEach(d => {
-
-        const key = e.uid + "_" + d.toISOString();
-
-        // Skip EXDATE
-        if (e.exdate && e.exdate.includes(d.toISOString().replace(/[-:]/g,"").split(".")[0])) {
-          return;
+      events.push({
+        id:       ev.uid || Math.random().toString(36).slice(2),
+        title:    ev.summary || '(No title)',
+        start,
+        end,
+        allDay:   isAllDay,
+        color:    colorFor(ev.summary || ''),
+        extendedProps: {
+          location:    ev.location    || '',
+          description: ev.description || '',
         }
-
-        // Override instance
-        if (overrides[key]) {
-          const o = overrides[key];
-          results.push(formatEvent(o,
-            new Date(parseDate(o.start)),
-            new Date(parseDate(o.end))
-          ));
-          return;
-        }
-
-        results.push(formatEvent(e, d, new Date(d.getTime() + duration)));
       });
-
-    } catch (err) {
-      console.warn("RRULE error", err);
-    }
-
+    } catch (_) { /* skip bad events */ }
   });
-
-  return results;
-}
-
-/* =========================
-   PARSER (FULL)
-========================= */
-
-function parseICS(data) {
-
-  const unfolded = data.replace(/\r?\n[ \t]/g, "");
-  const lines = unfolded.split(/\r?\n/);
-
-  const events = [];
-  let current = null;
-
-  for (let line of lines) {
-
-    if (line === "BEGIN:VEVENT") {
-      current = {};
-      continue;
-    }
-
-    if (line === "END:VEVENT") {
-      events.push(current);
-      current = null;
-      continue;
-    }
-
-    if (!current) continue;
-
-    const [rawKey, ...rest] = line.split(":");
-    const value = rest.join(":");
-    const key = rawKey.split(";")[0];
-
-    if (key === "UID") current.uid = value;
-    if (key === "SUMMARY") current.title = clean(value);
-    if (key === "DTSTART") current.start = value;
-    if (key === "DTEND") current.end = value;
-    if (key === "DESCRIPTION") current.description = clean(value);
-    if (key === "RRULE") current.rrule = value;
-    if (key === "EXDATE") current.exdate = value;
-    if (key === "RECURRENCE-ID") current.recurrenceId = value;
-  }
 
   return events;
 }
 
-/* =========================
-   HELPERS
-========================= */
+// ── Status helpers ────────────────────────────────────────────────────────────
+const statusEl   = document.getElementById('status');
+const statusText = document.getElementById('status-text');
+const syncStatus = document.getElementById('sync-status');
 
-function formatEvent(e, start, end) {
-  return {
-    title: e.title || "",
-    start,
-    end,
-    extendedProps: {
-      description: e.description || ""
+function setStatus(msg, isError = false) {
+  statusEl.classList.toggle('error', isError);
+  statusText.textContent = msg;
+  statusEl.classList.add('visible');
+}
+function clearStatus() { statusEl.classList.remove('visible'); }
+
+// ── Main ─────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+
+  // Init calendar with empty events; load async
+  const cal = new FullCalendar.Calendar(document.getElementById('calendar'), {
+    initialView: 'timeGridDay',
+    headerToolbar: {
+      left:   'prev,next today',
+      center: 'title',
+      right:  ''          // day view only
+    },
+    height: 'auto',
+    nowIndicator: true,
+    scrollTime: '08:00:00',
+    slotMinTime: '06:00:00',
+    slotMaxTime: '23:00:00',
+    events: [],            // filled after fetch
+
+    eventMouseEnter: showTip,
+    eventMouseLeave: hideTip,
+
+    eventClick(info) {
+      // clicking also "locks" tooltip until next enter
+      info.jsEvent.stopPropagation();
+    },
+
+    // nice event rendering
+    eventDidMount(info) {
+      info.el.title = info.event.extendedProps.location || '';
     }
-  };
-}
+  });
 
-function clean(t) {
-  return t
-    .replace(/\\n/g," ")
-    .replace(/\\,/g,",")
-    .replace(/\\\\/g,"\\")
-    .trim();
-}
+  cal.render();
 
-function parseDate(v) {
-  if (!v) return null;
+  // Fetch ICS via CORS proxy
+  try {
+    setStatus('Fetching calendar events…');
+    const res  = await fetch(PROXY(ICS_URL));
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
 
-  if (v.endsWith("Z")) {
-    return v.replace(
-      /(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/,
-      "$1-$2-$3T$4:$5:$6Z"
+    if (!json.contents) throw new Error('Empty response from proxy');
+
+    const events = parseICS(json.contents);
+    events.forEach(e => cal.addEvent(e));
+
+    const now = new Date();
+    syncStatus.textContent = `${events.length} events · synced ${now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`;
+    clearStatus();
+
+  } catch (err) {
+    console.error(err);
+    setStatus(
+      `Could not load calendar: ${err.message}. ` +
+      `Try opening this page via a local server or browser extension that allows CORS.`,
+      true
     );
   }
-
-  return v.replace(
-    /(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/,
-    "$1-$2-$3T$4:$5:$6"
-  );
-}
-
+});
 </script>
-
 </body>
 </html>
