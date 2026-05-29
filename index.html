@@ -62,7 +62,7 @@
 
 <body>
 
-<div id="pageHeader">Meeting Room hybrid</div>
+<div id="pageHeader">Meeting Room inject</div>
 <div id="dateTimeBar"></div>
 <div id="calendar"></div>
 
@@ -234,28 +234,42 @@ function injectPastRecurring(events) {
   const results = [];
   const now = new Date();
 
-  const startWindow = new Date(now);
-  startWindow.setHours(0,0,0,0);
+  // 🔥 widen the window (critical fix)
+  const windowStart = new Date(now);
+  windowStart.setDate(now.getDate() - 2); // go back 2 days
+  windowStart.setHours(0,0,0,0);
 
   events.forEach(e => {
 
-    if (!e.rrule) return;
+    if (!e.rrule || !e.start) return;
 
     try {
+      const dtstart = new Date(parseDate(e.start));
+
       const options = RRule.parseString(e.rrule);
-      options.dtstart = new Date(parseDate(e.start));
+
+      // 🔥 CRITICAL: explicitly set DTSTART correctly
+      options.dtstart = dtstart;
+
+      // 🔥 ALSO ensure timezone consistency
+      options.tzid = undefined;
 
       const rule = new RRule(options);
 
-      const dates = rule.between(startWindow, now, true);
+      const dates = rule.between(windowStart, now, true);
 
       const duration = getDuration(e.start, e.end) || 3600;
 
       dates.forEach(d => {
+
+        // 🔥 normalize to local time
+        const start = new Date(d);
+        const end = new Date(start.getTime() + duration * 1000);
+
         results.push({
           title: e.title,
-          start: d,
-          end: new Date(d.getTime() + duration * 1000),
+          start,
+          end,
           extendedProps: {
             description: e.description || ""
           }
@@ -263,7 +277,7 @@ function injectPastRecurring(events) {
       });
 
     } catch (err) {
-      console.warn("Fallback recurrence failed", err);
+      console.warn("Fallback recurrence failed:", err, e);
     }
 
   });
