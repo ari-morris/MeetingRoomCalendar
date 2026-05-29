@@ -86,7 +86,7 @@
 <div id="pageHeader">Meeting Room</div>
 
 <!-- date + time display -->
-<div id="dateTimeBar"> (beta)</div>
+<div id="dateTimeBar"></div>
 
 <div id="calendar"></div>
 
@@ -114,7 +114,7 @@ function updateDateTime() {
   });
 
   document.getElementById("dateTimeBar").innerHTML =
-    `${dateStr} • ${timeStr}`;
+    `${dateStr} • ${timeStr} (beta)`;
 }
 
 document.addEventListener('DOMContentLoaded', function () {
