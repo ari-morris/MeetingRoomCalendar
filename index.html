@@ -156,7 +156,6 @@
     .fc-scroller::-webkit-scrollbar-track { background: transparent; }
     .fc-scroller::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
-    /* Status bar */
     #status {
       display: none;
       align-items: center;
@@ -180,7 +179,6 @@
     #status.error { color: var(--accent); }
     #status.error .spinner { display: none; }
 
-    /* Tooltip */
     .tooltip {
       position: fixed;
       z-index: 9999;
@@ -232,6 +230,10 @@
 const ICS_URL = 'https://outlook.office365.com/owa/calendar/5ffdab88caa6494b83fdd5a68fd7ba2f@aahom.org/bce60bc8ad5945939494295b8daa01148196703426695370791/calendar.ics';
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
+// How far ahead/behind to expand recurring events (in days)
+const EXPAND_PAST_DAYS   = 90;
+const EXPAND_FUTURE_DAYS = 365;
+
 const PROXIES = [
   {
     url: u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
@@ -263,7 +265,7 @@ const tipLoc   = document.getElementById('tip-loc');
 function showTip(info) {
   const { event, jsEvent } = info;
   tipTitle.textContent = event.title;
-  const fmt = d => d ? d.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+  const fmt = d => d ? d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '';
   tipTime.textContent = event.allDay ? 'All day' : `${fmt(event.start)} – ${fmt(event.end)}`;
   const loc = event.extendedProps.location || '';
   tipLoc.textContent = loc;
@@ -281,31 +283,99 @@ function positionTip(e) {
 document.addEventListener('mousemove', e => { if (tooltip.classList.contains('show')) positionTip(e); });
 function hideTip() { tooltip.classList.remove('show'); }
 
-// ICS parsing
+// ── ICS parsing with full recurrence expansion ────────────────────────────────
 function parseICS(raw) {
   const comp    = new ICAL.Component(ICAL.parse(raw));
   const vevents = comp.getAllSubcomponents('vevent');
-  const events  = [];
+
+  // Expansion window
+  const now        = new Date();
+  const windowStart = new Date(now); windowStart.setDate(windowStart.getDate() - EXPAND_PAST_DAYS);
+  const windowEnd   = new Date(now); windowEnd.setDate(windowEnd.getDate() + EXPAND_FUTURE_DAYS);
+  const icalStart   = ICAL.Time.fromJSDate(windowStart, false);
+  const icalEnd     = ICAL.Time.fromJSDate(windowEnd,   false);
+
+  // Build a map of exception/override events keyed by UID
+  // These are VEVENT entries that have a RECURRENCE-ID (they override one occurrence)
+  const overrides = {}; // uid -> Map<recurrence-id-string, ICAL.Event>
   vevents.forEach(ve => {
-    try {
-      const ev      = new ICAL.Event(ve);
-      const dtstart = ev.startDate;
-      const dtend   = ev.endDate;
-      if (!dtstart) return;
-      events.push({
-        id:     ev.uid || Math.random().toString(36).slice(2),
-        title:  ev.summary || '(No title)',
-        start:  dtstart.toJSDate(),
-        end:    dtend ? dtend.toJSDate() : null,
-        allDay: dtstart.isDate,
-        color:  colorFor(ev.summary || ''),
-        extendedProps: {
-          location:    ev.location    || '',
-          description: ev.description || '',
-        }
-      });
-    } catch (_) {}
+    if (ve.getFirstPropertyValue('recurrence-id')) {
+      const ev  = new ICAL.Event(ve);
+      const uid = ev.uid;
+      if (!overrides[uid]) overrides[uid] = new Map();
+      overrides[uid].set(ev.recurrenceId.toString(), ev);
+    }
   });
+
+  const events = [];
+
+  vevents.forEach(ve => {
+    // Skip override entries — handled via the iterator below
+    if (ve.getFirstPropertyValue('recurrence-id')) return;
+
+    try {
+      const ev = new ICAL.Event(ve, { exceptions: Object.values(overrides[ev?.uid] || {}) });
+
+      if (ev.isRecurring()) {
+        // Expand recurrences within the window
+        const iter = ev.iterator();
+        let next;
+        let safetyLimit = 1000; // guard against infinite loops
+        while ((next = iter.next()) && safetyLimit-- > 0) {
+          if (next.compare(icalEnd) > 0) break;   // past window end
+          if (next.compare(icalStart) < 0) continue; // before window start
+
+          const details = ev.getOccurrenceDetails(next);
+
+          // Check if this occurrence is overridden by an exception
+          const overrideKey = next.toString();
+          const override = overrides[ev.uid]?.get(overrideKey);
+          const src = override || details;
+
+          const start  = (override ? override.startDate  : details.startDate).toJSDate();
+          const end    = (override ? override.endDate    : details.endDate  )?.toJSDate();
+          const title  = (override ? override.summary    : ev.summary) || '(No title)';
+          const loc    = (override ? override.location   : ev.location) || '';
+          const desc   = (override ? override.description: ev.description) || '';
+
+          events.push({
+            id:     `${ev.uid}_${next.toString()}`,
+            title,
+            start,
+            end,
+            allDay: details.startDate.isDate,
+            color:  colorFor(title),
+            extendedProps: { location: loc, description: desc }
+          });
+        }
+      } else {
+        // Non-recurring event — add directly
+        const dtstart = ev.startDate;
+        const dtend   = ev.endDate;
+        if (!dtstart) return;
+
+        // Still filter to window so we don't show ancient one-off events
+        const jsStart = dtstart.toJSDate();
+        if (jsStart < windowStart || jsStart > windowEnd) return;
+
+        events.push({
+          id:     ev.uid || Math.random().toString(36).slice(2),
+          title:  ev.summary || '(No title)',
+          start:  jsStart,
+          end:    dtend ? dtend.toJSDate() : null,
+          allDay: dtstart.isDate,
+          color:  colorFor(ev.summary || ''),
+          extendedProps: {
+            location:    ev.location    || '',
+            description: ev.description || '',
+          }
+        });
+      }
+    } catch (err) {
+      console.warn('Skipping event:', err.message);
+    }
+  });
+
   return events;
 }
 
@@ -322,9 +392,7 @@ function setStatus(msg, isError = false) {
 function clearStatus() { statusEl.classList.remove('visible'); }
 
 // Fetch via proxy chain
-async function fetchICS(isRefresh = false) {
-  if (!isRefresh) setStatus('Fetching calendar events…');
-
+async function fetchICS() {
   for (let i = 0; i < PROXIES.length; i++) {
     try {
       const res  = await fetch(PROXIES[i].url(ICS_URL), { signal: AbortSignal.timeout(8000) });
@@ -357,32 +425,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   cal.render();
 
-  // Load events into calendar, replacing any existing ones
   async function loadEvents(isRefresh = false) {
+    if (!isRefresh) setStatus('Fetching calendar events…');
     try {
-      const text   = await fetchICS(isRefresh);
+      const text   = await fetchICS();
       const events = parseICS(text);
       cal.getEvents().forEach(e => e.remove());
       events.forEach(e => cal.addEvent(e));
       const now = new Date();
-      syncStatus.textContent = `${events.length} events · synced ${now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`;
+      syncStatus.textContent = `${events.length} events · synced ${now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
       clearStatus();
     } catch (err) {
       console.error(err);
       if (!isRefresh) {
-        // First load failure — show error prominently
         setStatus(err.message, true);
       } else {
-        // Background refresh failure — show quietly in sync status
-        syncStatus.textContent = `⚠ refresh failed · ${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`;
+        syncStatus.textContent = `⚠ refresh failed · ${new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`;
       }
     }
   }
 
-  // Initial load
   await loadEvents(false);
-
-  // Refresh every 5 minutes
   setInterval(() => loadEvents(true), REFRESH_INTERVAL_MS);
 });
 </script>
