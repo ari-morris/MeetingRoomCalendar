@@ -84,31 +84,41 @@
       display: none !important;
     }
 
-    /* =========================
-       LEFT TIME COLUMN
-    ========================= */
+/* =========================
+   LEFT TIME COLUMN
+========================= */
 
-    .fc .fc-timegrid-axis {
-      width: 150px !important;
-    }
+.fc .fc-timegrid-axis {
+  width: 180px !important;
+  padding-right: 12px;
+  box-sizing: border-box;
+}
 
-    .fc .fc-timegrid-axis-frame {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      height: 100%;
-    }
+.fc .fc-timegrid-axis-frame {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
 
-    .fc .fc-timegrid-axis-cushion {
-      font-size: 27px !important;
-      white-space: nowrap !important;
+  padding-right: 10px;
+  box-sizing: border-box;
+}
 
-      display: block;
-      padding: 12px 18px !important;
+.fc .fc-timegrid-axis-cushion {
+  font-size: 27px !important;
+  font-weight: 600;
 
-      text-align: right;
-      box-sizing: border-box;
-    }
+  white-space: nowrap !important;
+
+  display: block;
+
+  /* MORE SPACE AROUND HOUR LABELS */
+  padding: 18px 28px !important;
+
+  text-align: right;
+
+  box-sizing: border-box;
+}
   </style>
 </head>
 
