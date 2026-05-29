@@ -1,364 +1,244 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <title>Meeting Room</title>
+<script src="https://cdn.jsdelivr.net/npm/rrule@2.8.1/dist/es5/rrule.min.js"></script>
 
-  <link
-    href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css"
-    rel="stylesheet"
-  >
+<script>
 
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
-
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-    }
-
-    #pageHeader {
-      text-align: center;
-      font-size: 100px;
-      font-weight: 700;
-      padding: 12px 0;
-    }
-
-    #dateTimeBar {
-      text-align: center;
-      font-size: 48px;
-      padding-bottom: 12px;
-      color: #444;
-    }
-
-    #calendar {
-      height: calc(100vh - 150px);
-      font-size: 24px;
-    }
-
-    /* =========================
-       INFO / BETA AREA
-    ========================= */
-
-    .info-separator {
-      width: 80%;
-      height: 1px;
-      background: #ccc;
-      margin: 10px auto 10px auto;
-    }
-
-    .info-label {
-      font-size: 18px;
-      color: #888;
-      font-style: italic;
-      font-weight: normal;
-      line-height: 1.4;
-    }
-
-    .info-label p {
-      margin: 0;
-    }
-
-    /* =========================
-       CALENDAR SIZING
-    ========================= */
-
-    .fc .fc-timegrid-slot {
-      height: 72px !important;
-    }
-
-    .fc .fc-timegrid-slot-label {
-      font-size: 27px !important;
-      font-weight: 600;
-    }
-
-    .fc .fc-event-title {
-      font-size: 18px !important;
-    }
-
-    .fc .fc-event {
-      font-size: 16px !important;
-    }
-
-    .fc .fc-col-header {
-      display: none !important;
-    }
+const ICS_URL =
+"https://outlook.office365.com/owa/calendar/5ffdab88caa6494b83fdd5a68fd7ba2f@aahom.org/bce60bc8ad5945939494295b8daa01148196703426695370791/calendar.ics";
 
 /* =========================
-   LEFT TIME COLUMN
+   DATE/TIME HEADER
 ========================= */
 
-.fc .fc-timegrid-axis {
-  width: 220px !important;
+function updateDateTime() {
+  const now = new Date();
+
+  const dateStr = now.toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const timeStr = now.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit'
+  });
+
+  document.getElementById("dateTimeBar").innerHTML =
+    `${dateStr} • ${timeStr}`;
 }
 
-/* Add padding to the actual table cell */
-.fc .fc-timegrid-slot-label {
-  padding-right: 30px !important;
-  padding-left: 20px !important;
-  box-sizing: border-box;
-}
+/* =========================
+   INIT
+========================= */
 
-/* Time label container */
-.fc .fc-timegrid-axis-frame {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  height: 100%;
-  width: 100%;
-}
+document.addEventListener('DOMContentLoaded', function () {
 
-/* Actual hour text */
-.fc .fc-timegrid-axis-cushion {
-  font-size: 27px !important;
-  font-weight: 600;
-  white-space: nowrap !important;
+  updateDateTime();
+  setInterval(updateDateTime, 1000);
 
-  padding: 0 !important;
+  const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
 
-  text-align: right;
-}
-  </style>
-</head>
+    initialView: 'timeGridDay',
+    nowIndicator: true,
+    allDaySlot: false,
 
-<body>
+    slotMinTime: "08:00:00",
+    slotMaxTime: "19:00:00",
 
-  <div id="pageHeader">Meeting Room</div>
+    slotDuration: "00:30:00",
+    headerToolbar: false,
 
-  <div id="dateTimeBar"></div>
+    slotLabelFormat: {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    },
 
-  <div id="calendar"></div>
+    eventContent: function(arg) {
+      const desc = (arg.event.extendedProps.description || "")
+        .replace(/\n/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .substring(0, 400);
 
-  <script>
+      return {
+        html: `
+          <div style="padding:6px; line-height:1.3;">
+            <div style="font-weight:bold; font-size:26px;">
+              ${arg.event.title}
+            </div>
+            <div style="font-size:18px; opacity:0.8;">
+              ${arg.timeText}
+            </div>
+            ${desc ? `
+              <div style="font-size:18px; margin-top:6px; opacity:0.9;">
+                ${desc}
+              </div>` : ""}
+          </div>
+        `
+      };
+    },
 
-    const ICS_URL =
-      "https://outlook.office365.com/owa/calendar/5ffdab88caa6494b83fdd5a68fd7ba2f@aahom.org/bce60bc8ad5945939494295b8daa01148196703426695370791/calendar.ics";
+    events: fetchICS
+  });
 
-    /* =========================
-       LIVE DATE + TIME HEADER
-    ========================= */
+  calendar.render();
+  setInterval(() => calendar.refetchEvents(), 300000);
+});
 
-    function updateDateTime() {
+/* =========================
+   FETCH ICS
+========================= */
 
-      const now = new Date();
+async function fetchICS(fetchInfo, successCallback, failureCallback) {
+  try {
+    const proxy = "https://corsproxy.io/?";
+    const url = ICS_URL + "?nocache=" + Date.now();
 
-      const dateStr = now.toLocaleDateString(undefined, {
-        weekday: 'long',
-        month: 'long',
-        day: 'numeric'
-      });
-
-      const timeStr = now.toLocaleTimeString(undefined, {
-        hour: 'numeric',
-        minute: '2-digit'
-      });
-
-      document.getElementById("dateTimeBar").innerHTML = `
-        <div>${dateStr} • ${timeStr}</div>
-
-        <div class="info-separator"></div>
-
-        <div class="info-label">
-          <p>
-            Updates every 5 minutes. (Note - this calendar is in beta. Report issues to: it@aahom.org.)
-          </p>
-        </div>
-      `;
-    }
-
-    /* =========================
-       PAGE LOAD
-    ========================= */
-
-    document.addEventListener('DOMContentLoaded', function () {
-
-      updateDateTime();
-      setInterval(updateDateTime, 1000);
-
-      const calendar = new FullCalendar.Calendar(
-        document.getElementById('calendar'),
-        {
-
-          initialView: 'timeGridDay',
-          nowIndicator: true,
-
-          allDaySlot: false,
-
-          slotMinTime: "08:00:00",
-          slotMaxTime: "19:00:00",
-
-          slotDuration: "00:30:00",
-
-          headerToolbar: false,
-
-          slotLabelFormat: {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
-          },
-
-          eventContent: function(arg) {
-
-            const desc = (arg.event.extendedProps.description || "")
-              .replace(/\n/g, " ")
-              .replace(/\s+/g, " ")
-              .trim()
-              .substring(0, 400);
-
-            return {
-              html: `
-                <div style="padding:6px; line-height:1.3;">
-
-                  <div style="font-weight:bold; font-size:26px;">
-                    ${arg.event.title}
-                  </div>
-
-                  <div style="font-size:18px; opacity:0.8;">
-                    ${arg.timeText}
-                  </div>
-
-                  ${desc ? `
-                    <div style="font-size:18px; margin-top:6px; opacity:0.9;">
-                      ${desc}
-                    </div>
-                  ` : ""}
-
-                </div>
-              `
-            };
-          },
-
-          events: fetchICSAsEvents
-        }
-      );
-
-      calendar.render();
-
-      setInterval(() => {
-        calendar.refetchEvents();
-      }, 300000);
-
+    const res = await fetch(proxy + encodeURIComponent(url), {
+      cache: "no-store"
     });
 
-    /* =========================
-       FETCH ICS
-    ========================= */
+    const text = await res.text();
 
-    async function fetchICSAsEvents(fetchInfo, successCallback, failureCallback) {
+    const events = parseICS(text);
+    const expanded = expandRecurring(events);
 
-      try {
+    successCallback(expanded);
 
-        const proxy = "https://corsproxy.io/?";
-        const url = ICS_URL + "?nocache=" + Date.now();
+  } catch (err) {
+    console.error(err);
+    failureCallback(err);
+  }
+}
 
-        const res = await fetch(
-          proxy + encodeURIComponent(url),
-          { cache: "no-store" }
-        );
+/* =========================
+   PARSE ICS
+========================= */
 
-        const text = await res.text();
+function parseICS(data) {
+  const unfolded = data.replace(/\r?\n[ \t]/g, "");
+  const lines = unfolded.split(/\r?\n/);
 
-        successCallback(parseICS(text));
+  const events = [];
+  let current = null;
 
-      } catch (err) {
+  for (let line of lines) {
 
-        console.error(err);
-        failureCallback(err);
-      }
+    if (line.startsWith("BEGIN:VEVENT")) {
+      current = {};
+      continue;
     }
 
-    /* =========================
-       PARSE ICS
-    ========================= */
-
-    function parseICS(data) {
-
-      const unfolded = data.replace(/\r?\n[ \t]/g, "");
-
-      const lines = unfolded.split(/\r?\n/);
-
-      const events = [];
-
-      let current = null;
-
-      for (let line of lines) {
-
-        if (line.startsWith("BEGIN:VEVENT")) {
-          current = {};
-          continue;
-        }
-
-        if (line.startsWith("END:VEVENT")) {
-
-          if (current) {
-
-            events.push({
-              title: cleanICS(current.title || ""),
-              start: current.start,
-              end: current.end,
-
-              extendedProps: {
-                description: cleanICS(current.description || ""),
-                location: cleanICS(current.location || ""),
-                rrule: current.rrule || ""
-              }
-            });
-          }
-
-          current = null;
-          continue;
-        }
-
-        if (!current) continue;
-
-        const parts = line.split(":");
-
-        if (parts.length < 2) continue;
-
-        const rawKey = parts[0];
-        const value = parts.slice(1).join(":");
-
-        const key = rawKey.split(";")[0];
-
-        if (key === "SUMMARY") current.title = value;
-        if (key === "DTSTART") current.start = parseDate(value);
-        if (key === "DTEND") current.end = parseDate(value);
-        if (key === "DESCRIPTION") current.description = value;
-        if (key === "LOCATION") current.location = value;
-        if (key === "RRULE") current.rrule = value;
-      }
-
-      return events;
+    if (line.startsWith("END:VEVENT")) {
+      if (current) events.push(current);
+      current = null;
+      continue;
     }
 
-    /* =========================
-       CLEAN ICS TEXT
-    ========================= */
+    if (!current) continue;
 
-    function cleanICS(text) {
+    const parts = line.split(":");
+    if (parts.length < 2) continue;
 
-      return text
-        .replace(/\\n/g, " ")
-        .replace(/\\,/g, ",")
-        .replace(/\\\\/g, "\\")
-        .trim();
+    const key = parts[0].split(";")[0];
+    const value = parts.slice(1).join(":");
+
+    if (key === "SUMMARY") current.title = cleanICS(value);
+    if (key === "DTSTART") current.start = parseDate(value);
+    if (key === "DTEND") current.end = parseDate(value);
+    if (key === "DESCRIPTION") current.description = cleanICS(value);
+    if (key === "RRULE") current.rrule = value;
+    if (key === "EXDATE") current.exdate = value;
+  }
+
+  return events;
+}
+
+/* =========================
+   EXPAND RECURRENCE (FULL)
+========================= */
+
+function expandRecurring(events) {
+
+  const result = [];
+
+  const now = new Date();
+  const windowStart = new Date(now);
+  windowStart.setDate(now.getDate() - 1);
+
+  const windowEnd = new Date(now);
+  windowEnd.setDate(now.getDate() + 7);
+
+  events.forEach(evt => {
+
+    const start = new Date(evt.start);
+    const end = new Date(evt.end);
+    const duration = end - start;
+
+    // non-recurring
+    if (!evt.rrule) {
+      result.push(formatEvent(evt, start, end));
+      return;
     }
 
-    /* =========================
-       DATE PARSING
-    ========================= */
+    try {
+      const rule = RRule.fromString(evt.rrule);
 
-    function parseDate(value) {
+      const dates = rule.between(windowStart, windowEnd, true);
 
-      if (!value) return null;
+      const exdates = (evt.exdate || "")
+        .split(",")
+        .map(d => parseDate(d));
 
-      return value.replace(
-        /(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/,
-        "$1-$2-$3T$4:$5:$6Z"
-      );
+      dates.forEach(d => {
+
+        const iso = d.toISOString();
+
+        if (exdates.includes(iso)) return;
+
+        result.push(formatEvent(evt, d, new Date(d.getTime() + duration)));
+      });
+
+    } catch (e) {
+      console.warn("RRULE failed:", evt.rrule, e);
     }
 
-  </script>
+  });
 
-</body>
-</html>
+  return result;
+}
+
+/* =========================
+   HELPERS
+========================= */
+
+function formatEvent(evt, start, end) {
+  return {
+    title: evt.title || "",
+    start,
+    end,
+    extendedProps: {
+      description: evt.description || ""
+    }
+  };
+}
+
+function cleanICS(text) {
+  return text
+    .replace(/\\n/g, " ")
+    .replace(/\\,/g, ",")
+    .replace(/\\\\/g, "\\")
+    .trim();
+}
+
+function parseDate(value) {
+  if (!value) return null;
+
+  return value.replace(
+    /(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/,
+    "$1-$2-$3T$4:$5:$6Z"
+  );
+}
+
+</script>
