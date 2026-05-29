@@ -14,7 +14,7 @@
     }
 
     #calendar {
-      height: calc(100vh - 150px); /* adjust if needed */
+      height: calc(100vh - 150px);
       font-size: 24px;
     }
 
@@ -71,12 +71,19 @@
   text-align: right;
   box-sizing: border-box;
 }
+
+    .fc .fc-timegrid-axis-frame {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 100%;
+}
   </style>
 </head>
 
 <body>
 
-<div id="pageHeader">Meeting Room</div>
+<div id="pageHeader">Meeting Room test</div>
 
 <!-- date + time display -->
 <div id="dateTimeBar"> (beta)</div>
