@@ -186,9 +186,7 @@ async function fetchICS(fetchInfo, successCallback, failureCallback) {
     const text = await res.text();
 
     const events = parseICS(text);
-    const expanded = expandRecurring(events);
-
-    successCallback(expanded);
+successCallback(events);
 
   } catch (err) {
     console.error(err);
