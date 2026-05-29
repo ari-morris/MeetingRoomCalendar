@@ -78,6 +78,13 @@
   justify-content: flex-end;
   height: 100%;
 }
+
+    .info-label {
+  font-size: 22px;
+  color: #888;
+  margin-top: 4px;
+  font-weight: normal;
+}
   </style>
 </head>
 
@@ -113,8 +120,11 @@ function updateDateTime() {
     minute: '2-digit'
   });
 
-  document.getElementById("dateTimeBar").innerHTML =
-    `${dateStr} • ${timeStr} (beta)`;
+ document.getElementById("dateTimeBar").innerHTML =
+  `
+    <div>${dateStr} • ${timeStr}</div>
+    <div class="info-label">Updates every 5  minutes. This page is in beta. Report issues to it@aahom.org.</div>
+  `;
 }
 
 document.addEventListener('DOMContentLoaded', function () {
