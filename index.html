@@ -5,26 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AAHOM Calendar</title>
 
-  <!-- FullCalendar -->
   <link href="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.11/index.global.min.css" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fullcalendar/6.1.11/index.global.min.js"></script>
-
-  <!-- iCal parser: ical.js -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ical.js/1.5.0/ical.min.js"></script>
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
 
     :root {
-      --ink:       #1a1a2e;
-      --paper:     #f8f5f0;
-      --accent:    #c0392b;
-      --accent2:   #e67e22;
-      --muted:     #7f8c8d;
-      --border:    #ddd8d0;
-      --card:      #ffffff;
-      --today-bg:  #fff8f0;
-      --shadow:    0 2px 16px rgba(0,0,0,0.07);
+      --ink:      #1a1a2e;
+      --paper:    #f8f5f0;
+      --accent:   #c0392b;
+      --accent2:  #e67e22;
+      --muted:    #7f8c8d;
+      --border:   #ddd8d0;
+      --card:     #ffffff;
+      --today-bg: #fff8f0;
+      --shadow:   0 2px 16px rgba(0,0,0,0.07);
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -91,9 +88,7 @@
     }
 
     .fc { font-family: 'DM Sans', sans-serif; }
-
     .fc .fc-toolbar { margin-bottom: 20px; gap: 12px; }
-
     .fc .fc-toolbar-title {
       font-family: 'DM Serif Display', serif;
       font-size: 22px;
@@ -111,7 +106,6 @@
       padding: 7px 14px !important;
       transition: opacity 0.15s !important;
     }
-
     .fc .fc-button:hover { opacity: 0.75 !important; }
     .fc .fc-button-active { background: var(--accent) !important; }
     .fc .fc-button:focus { box-shadow: none !important; }
@@ -124,7 +118,6 @@
     .fc .fc-today-button:hover { background: var(--ink) !important; color: #fff !important; }
 
     .fc .fc-timegrid-slot { height: 44px !important; border-color: var(--border) !important; }
-
     .fc .fc-timegrid-slot-label {
       font-size: 11px;
       font-weight: 500;
@@ -139,7 +132,6 @@
       border-bottom: 2px solid var(--border) !important;
       padding: 10px 0 !important;
     }
-
     .fc .fc-col-header-cell-cushion {
       font-family: 'DM Serif Display', serif;
       font-size: 18px;
@@ -156,7 +148,6 @@
       cursor: pointer;
       box-shadow: 0 1px 4px rgba(0,0,0,0.12) !important;
     }
-
     .fc-event .fc-event-title { font-weight: 600; }
     .fc-event .fc-event-time { font-weight: 300; opacity: 0.85; }
     .fc .fc-daygrid-event { border-radius: 3px !important; }
@@ -165,6 +156,7 @@
     .fc-scroller::-webkit-scrollbar-track { background: transparent; }
     .fc-scroller::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
+    /* Status bar */
     #status {
       display: none;
       align-items: center;
@@ -188,6 +180,7 @@
     #status.error { color: var(--accent); }
     #status.error .spinner { display: none; }
 
+    /* Tooltip */
     .tooltip {
       position: fixed;
       z-index: 9999;
@@ -237,6 +230,7 @@
 
 <script>
 const ICS_URL = 'https://outlook.office365.com/owa/calendar/5ffdab88caa6494b83fdd5a68fd7ba2f@aahom.org/bce60bc8ad5945939494295b8daa01148196703426695370791/calendar.ics';
+const REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 const PROXIES = [
   {
@@ -257,469 +251,10 @@ const PROXIES = [
   }
 ];
 
-// Embedded snapshot — loads instantly with no network required.
-// The live refresh below will replace this with current data when possible.
-const EMBEDDED_ICS = `BEGIN:VCALENDAR
-METHOD:PUBLISH
-PRODID:Microsoft Exchange Server 2010
-VERSION:2.0
-X-WR-CALNAME:Calendar
-BEGIN:VTIMEZONE
-TZID:Eastern Standard Time
-BEGIN:STANDARD
-DTSTART:16010101T020000
-TZOFFSETFROM:-0400
-TZOFFSETTO:-0500
-RRULE:FREQ=YEARLY;INTERVAL=1;BYDAY=1SU;BYMONTH=11
-END:STANDARD
-BEGIN:DAYLIGHT
-DTSTART:16010101T020000
-TZOFFSETFROM:-0500
-TZOFFSETTO:-0400
-RRULE:FREQ=YEARLY;INTERVAL=1;BYDAY=2SU;BYMONTH=3
-END:DAYLIGHT
-END:VTIMEZONE
-BEGIN:VEVENT
-RRULE:FREQ=WEEKLY;UNTIL=20250924T173000Z;INTERVAL=1;BYDAY=WE;WKST=SU
-EXDATE;TZID=Eastern Standard Time:20250625T133000
-UID:ari-exhibits-weekly
-SUMMARY:Ari Morris Exhibits Weekly Meeting
-DTSTART;TZID=Eastern Standard Time:20250604T133000
-DTEND;TZID=Eastern Standard Time:20250604T150000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:gem-gabbys-dollhouse
-SUMMARY:Gem Miller Gabby's Dollhouse Logistics
-DTSTART;TZID=Eastern Standard Time:20250609T143000
-DTEND;TZID=Eastern Standard Time:20250609T153000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:thomas-meeting-susan
-SUMMARY:Thomas Butler Meeting with Susan
-DTSTART;TZID=Eastern Standard Time:20250611T123000
-DTEND;TZID=Eastern Standard Time:20250611T140000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:susan-financial-model
-SUMMARY:Susan Westhoff Financial model discussion
-DTSTART;TZID=Eastern Standard Time:20250613T093000
-DTEND;TZID=Eastern Standard Time:20250613T103000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:carol-committee-work
-SUMMARY:Carol Knauss committee work
-DTSTART;TZID=Eastern Standard Time:20250613T130000
-DTEND;TZID=Eastern Standard Time:20250613T143000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-RRULE:FREQ=WEEKLY;UNTIL=20270518T140000Z;INTERVAL=2;BYDAY=TU;WKST=SU
-EXDATE;TZID=Eastern Standard Time:20250715T100000,20251230T100000,20260602T100000
-UID:susan-directors-meeting
-SUMMARY:Susan Westhoff Directors meeting
-DTSTART;TZID=Eastern Standard Time:20250617T100000
-DTEND;TZID=Eastern Standard Time:20250617T120000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:calla-survey-chat
-SUMMARY:Calla McCulley Survey Chat
-DTSTART;TZID=Eastern Standard Time:20250619T110000
-DTEND;TZID=Eastern Standard Time:20250619T120000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:ari-mobilab-brainstorm
-SUMMARY:Ari Morris Mobilab exhibit brainstorm
-DTSTART;TZID=Eastern Standard Time:20250619T120000
-DTEND;TZID=Eastern Standard Time:20250619T130000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:calla-joint-muster-june
-SUMMARY:Calla McCulley CM/CK/DC Joint Muster
-DTSTART;TZID=Eastern Standard Time:20250627T090000
-DTEND;TZID=Eastern Standard Time:20250627T100000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:charlie-membership-sale
-SUMMARY:Charlie Reischl Membership Sale
-DTSTART;TZID=Eastern Standard Time:20250701T154500
-DTEND;TZID=Eastern Standard Time:20250701T163000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:charlie-membership-sale-final
-SUMMARY:Charlie Reischl Review Membership Sale Final
-DTSTART;TZID=Eastern Standard Time:20250703T150000
-DTEND;TZID=Eastern Standard Time:20250703T160000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:charlie-steve-charlie
-SUMMARY:Charlie Reischl Steve and Charlie
-DTSTART;TZID=Eastern Standard Time:20250708T100000
-DTEND;TZID=Eastern Standard Time:20250708T110000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:calla-carol-calla
-SUMMARY:Calla McCulley Carol and Calla
-DTSTART;TZID=Eastern Standard Time:20250711T110000
-DTEND;TZID=Eastern Standard Time:20250711T120000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:charlie-cel-intro
-SUMMARY:Charlie Reischl Community Engaged Learning Introduction
-DTSTART;TZID=Eastern Standard Time:20250711T140000
-DTEND;TZID=Eastern Standard Time:20250711T150000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:alice-change-ll-rooms
-SUMMARY:Alice Klute Change LL Room Names
-DTSTART;TZID=Eastern Standard Time:20250714T100000
-DTEND;TZID=Eastern Standard Time:20250714T120000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:alice-brightauthor
-SUMMARY:Alice Klute Making BrightAuthor work from anywhere
-DTSTART;TZID=Eastern Standard Time:20250717T110000
-DTEND;TZID=Eastern Standard Time:20250717T120000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:charlie-flutter-chats
-SUMMARY:Charlie Reischl Flutter Chats
-DTSTART;TZID=Eastern Standard Time:20250718T120000
-DTEND;TZID=Eastern Standard Time:20250718T130000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:ari-exhibits-ed-ops
-SUMMARY:Ari Morris Exhibits-Education-Operations
-DTSTART;TZID=Eastern Standard Time:20250721T130000
-DTEND;TZID=Eastern Standard Time:20250721T143000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:thomas-financial-review
-SUMMARY:Thomas Butler Financial review
-DTSTART;TZID=Eastern Standard Time:20250722T120000
-DTEND;TZID=Eastern Standard Time:20250722T133000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:thomas-oct-jun-income
-SUMMARY:Thomas Butler Oct-Jun Class Income Statement review
-DTSTART;TZID=Eastern Standard Time:20250729T110000
-DTEND;TZID=Eastern Standard Time:20250729T120000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:thomas-oct-jun-budget
-SUMMARY:Thomas Butler Discuss Oct-Jun Act vs Budget
-DTSTART;TZID=Eastern Standard Time:20250729T140000
-DTEND;TZID=Eastern Standard Time:20250729T150000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:lannis-lend-tiers
-SUMMARY:Lannis Smith Lend Me Your Tiers!
-DTSTART;TZID=Eastern Standard Time:20250730T113000
-DTEND;TZID=Eastern Standard Time:20250730T130000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:lannis-fairs-festivals
-SUMMARY:Lannis Smith Fairs and Festivals Chat
-DTSTART;TZID=Eastern Standard Time:20250731T110000
-DTEND;TZID=Eastern Standard Time:20250731T120000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:calla-cm-checkin
-SUMMARY:Calla McCulley CM Check-In
-DTSTART;TZID=Eastern Standard Time:20250731T143000
-DTEND;TZID=Eastern Standard Time:20250731T153000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:thomas-maintenance-budget
-SUMMARY:Thomas Butler Review Act-Budget for Maintenance
-DTSTART;TZID=Eastern Standard Time:20250801T110000
-DTEND;TZID=Eastern Standard Time:20250801T120000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:susan-ed-budgeting
-SUMMARY:Susan Westhoff Ed budgeting
-DTSTART;TZID=Eastern Standard Time:20250801T140000
-DTEND;TZID=Eastern Standard Time:20250801T163000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:gem-school-marketing
-SUMMARY:Gem Miller School Marketing Check-In
-DTSTART;TZID=Eastern Standard Time:20250804T130000
-DTEND;TZID=Eastern Standard Time:20250804T140000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:susan-marketing-budget
-SUMMARY:Susan Westhoff Marketing actuals and budget
-DTSTART;TZID=Eastern Standard Time:20250805T100000
-DTEND;TZID=Eastern Standard Time:20250805T110000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:lannis-interviews-aahom
-SUMMARY:Lannis Smith MR/CM CONFIRMED for Interviews at AAHoM
-DTSTART;TZID=Eastern Standard Time:20250805T160000
-DTEND;TZID=Eastern Standard Time:20250805T170000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:calla-cm-joint-muster-aug
-SUMMARY:Calla McCulley CM Joint Muster
-DTSTART;TZID=Eastern Standard Time:20250806T153000
-DTEND;TZID=Eastern Standard Time:20250806T163000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:calla-versai-reports
-SUMMARY:Calla McCulley Public Programs in Versai
-DTSTART;TZID=Eastern Standard Time:20250807T103000
-DTEND;TZID=Eastern Standard Time:20250807T110000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:alice-store-budget
-SUMMARY:Alice Klute Finish Store Budget
-DTSTART;TZID=Eastern Standard Time:20250811T110000
-DTEND;TZID=Eastern Standard Time:20250811T120000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:calla-ed-manager-meeting
-SUMMARY:Calla McCulley Ed Manager Meeting
-DTSTART;TZID=Eastern Standard Time:20250811T130000
-DTEND;TZID=Eastern Standard Time:20250811T143000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:charlie-exhibits-dev-budget
-SUMMARY:Charlie Reischl Exhibits / Dev Budget Items
-DTSTART;TZID=Eastern Standard Time:20250813T120000
-DTEND;TZID=Eastern Standard Time:20250813T123000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:ari-bird-enclosure
-SUMMARY:Ari Morris Bird Enclosure Design Brainstorm
-DTSTART;TZID=Eastern Standard Time:20250813T150000
-DTEND;TZID=Eastern Standard Time:20250813T163000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:susan-hold
-SUMMARY:Susan Westhoff hold
-DTSTART;TZID=Eastern Standard Time:20250814T090000
-DTEND;TZID=Eastern Standard Time:20250814T100000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:nathan-iwave
-SUMMARY:Nathan Phillips NDP and CR Meet re iWave
-DTSTART;TZID=Eastern Standard Time:20250815T140000
-DTEND;TZID=Eastern Standard Time:20250815T150000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:charlie-member-night
-SUMMARY:Charlie Reischl Sept Member Night Planning
-DTSTART;TZID=Eastern Standard Time:20250815T153000
-DTEND;TZID=Eastern Standard Time:20250815T161500
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:lannis-interview-eleanor
-SUMMARY:Lannis Smith HOLD: Interview-Eleanor
-DTSTART;TZID=Eastern Standard Time:20250818T140000
-DTEND;TZID=Eastern Standard Time:20250818T150000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:charlie-checkin-aug19
-SUMMARY:Charlie Reischl Check In
-DTSTART;TZID=Eastern Standard Time:20250819T100000
-DTEND;TZID=Eastern Standard Time:20250819T110000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:carol-life-after-jan
-SUMMARY:Carol Knauss Life after Jan
-DTSTART;TZID=Eastern Standard Time:20250819T173000
-DTEND;TZID=Eastern Standard Time:20250819T180000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:susan-wayne-stan
-SUMMARY:Susan Westhoff Wayne and Stan
-DTSTART;TZID=Eastern Standard Time:20250820T093000
-DTEND;TZID=Eastern Standard Time:20250820T103000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:ally-interview-mark
-SUMMARY:Ally Ross Confirmed Interview Mark Dettling
-DTSTART;TZID=Eastern Standard Time:20250820T150000
-DTEND;TZID=Eastern Standard Time:20250820T160000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:emily-expense-report
-SUMMARY:Emily Venner Expense Report Lock In
-DTSTART;TZID=Eastern Standard Time:20250821T110000
-DTEND;TZID=Eastern Standard Time:20250821T130000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:susan-vep-cmte
-SUMMARY:Susan Westhoff VEP cmte
-DTSTART;TZID=Eastern Standard Time:20250821T143000
-DTEND;TZID=Eastern Standard Time:20250821T153000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:calla-versai-training
-SUMMARY:Calla McCulley Versai Reports Training
-DTSTART;TZID=Eastern Standard Time:20250827T153000
-DTEND;TZID=Eastern Standard Time:20250827T170000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:susan-shiri-hold
-SUMMARY:Susan Westhoff HOLD: Shiri/H.ford/innovation nation
-DTSTART;TZID=Eastern Standard Time:20250829T140000
-DTEND;TZID=Eastern Standard Time:20250829T153000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-BEGIN:VEVENT
-UID:nathan-underground-printing
-SUMMARY:Nathan Phillips NDP and CR w Underground Printing
-DTSTART;TZID=Eastern Standard Time:20250624T100000
-DTEND;TZID=Eastern Standard Time:20250624T103000
-CLASS:PUBLIC
-STATUS:CONFIRMED
-LOCATION:Meeting Room 1 - AAHOM
-END:VEVENT
-END:VCALENDAR`;
-
 const PALETTE = ['#c0392b','#d35400','#8e44ad','#16a085','#2980b9','#27ae60'];
 const colorFor = str => PALETTE[Math.abs([...str].reduce((h,c)=>h*31+c.charCodeAt(0)|0,0)) % PALETTE.length];
 
+// Tooltip
 const tooltip  = document.getElementById('tooltip');
 const tipTitle = document.getElementById('tip-title');
 const tipTime  = document.getElementById('tip-time');
@@ -736,7 +271,6 @@ function showTip(info) {
   positionTip(jsEvent);
   tooltip.classList.add('show');
 }
-
 function positionTip(e) {
   const pad = 14, TW = 280;
   let x = e.clientX + pad, y = e.clientY + pad;
@@ -744,16 +278,12 @@ function positionTip(e) {
   tooltip.style.left = x + 'px';
   tooltip.style.top  = y + 'px';
 }
-
-document.addEventListener('mousemove', e => {
-  if (tooltip.classList.contains('show')) positionTip(e);
-});
-
+document.addEventListener('mousemove', e => { if (tooltip.classList.contains('show')) positionTip(e); });
 function hideTip() { tooltip.classList.remove('show'); }
 
+// ICS parsing
 function parseICS(raw) {
-  const jcal    = ICAL.parse(raw);
-  const comp    = new ICAL.Component(jcal);
+  const comp    = new ICAL.Component(ICAL.parse(raw));
   const vevents = comp.getAllSubcomponents('vevent');
   const events  = [];
   vevents.forEach(ve => {
@@ -763,10 +293,10 @@ function parseICS(raw) {
       const dtend   = ev.endDate;
       if (!dtstart) return;
       events.push({
-        id:    ev.uid || Math.random().toString(36).slice(2),
-        title: ev.summary || '(No title)',
-        start: dtstart.toJSDate(),
-        end:   dtend ? dtend.toJSDate() : null,
+        id:     ev.uid || Math.random().toString(36).slice(2),
+        title:  ev.summary || '(No title)',
+        start:  dtstart.toJSDate(),
+        end:    dtend ? dtend.toJSDate() : null,
         allDay: dtstart.isDate,
         color:  colorFor(ev.summary || ''),
         extendedProps: {
@@ -779,6 +309,7 @@ function parseICS(raw) {
   return events;
 }
 
+// Status helpers
 const statusEl   = document.getElementById('status');
 const statusText = document.getElementById('status-text');
 const syncStatus = document.getElementById('sync-status');
@@ -790,6 +321,25 @@ function setStatus(msg, isError = false) {
 }
 function clearStatus() { statusEl.classList.remove('visible'); }
 
+// Fetch via proxy chain
+async function fetchICS(isRefresh = false) {
+  if (!isRefresh) setStatus('Fetching calendar events…');
+
+  for (let i = 0; i < PROXIES.length; i++) {
+    try {
+      const res  = await fetch(PROXIES[i].url(ICS_URL), { signal: AbortSignal.timeout(8000) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await PROXIES[i].extract(res);
+      if (!text || !text.includes('BEGIN:VCALENDAR')) throw new Error('Invalid ICS');
+      return text;
+    } catch (err) {
+      console.warn(`Proxy ${i + 1} failed:`, err.message);
+    }
+  }
+  throw new Error('All proxies failed — the calendar feed may be temporarily unavailable.');
+}
+
+// Main
 document.addEventListener('DOMContentLoaded', async () => {
   const cal = new FullCalendar.Calendar(document.getElementById('calendar'), {
     initialView: 'timeGridDay',
@@ -805,37 +355,35 @@ document.addEventListener('DOMContentLoaded', async () => {
     eventClick(info) { info.jsEvent.stopPropagation(); },
     eventDidMount(info) { info.el.title = info.event.extendedProps.location || ''; }
   });
-
   cal.render();
 
-  // Load snapshot immediately — always works, no network needed
-  const snapEvents = parseICS(EMBEDDED_ICS);
-  snapEvents.forEach(e => cal.addEvent(e));
-  syncStatus.textContent = `${snapEvents.length} events (snapshot)`;
-  clearStatus();
-
-  // Silently try live proxies in background to get latest data
-  async function refreshLive() {
-    for (let i = 0; i < PROXIES.length; i++) {
-      try {
-        const res  = await fetch(PROXIES[i].url(ICS_URL), { signal: AbortSignal.timeout(8000) });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const text = await PROXIES[i].extract(res);
-        if (!text || !text.includes('BEGIN:VCALENDAR')) throw new Error('Invalid ICS');
-        cal.getEvents().forEach(e => e.remove());
-        const liveEvents = parseICS(text);
-        liveEvents.forEach(e => cal.addEvent(e));
-        const now = new Date();
-        syncStatus.textContent = `${liveEvents.length} events · live synced ${now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`;
-        return;
-      } catch (err) {
-        console.warn(`Proxy ${i + 1} failed:`, err.message);
+  // Load events into calendar, replacing any existing ones
+  async function loadEvents(isRefresh = false) {
+    try {
+      const text   = await fetchICS(isRefresh);
+      const events = parseICS(text);
+      cal.getEvents().forEach(e => e.remove());
+      events.forEach(e => cal.addEvent(e));
+      const now = new Date();
+      syncStatus.textContent = `${events.length} events · synced ${now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`;
+      clearStatus();
+    } catch (err) {
+      console.error(err);
+      if (!isRefresh) {
+        // First load failure — show error prominently
+        setStatus(err.message, true);
+      } else {
+        // Background refresh failure — show quietly in sync status
+        syncStatus.textContent = `⚠ refresh failed · ${new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}`;
       }
     }
-    syncStatus.textContent = syncStatus.textContent.replace('(snapshot)', '(snapshot — live refresh unavailable)');
   }
 
-  refreshLive();
+  // Initial load
+  await loadEvents(false);
+
+  // Refresh every 5 minutes
+  setInterval(() => loadEvents(true), REFRESH_INTERVAL_MS);
 });
 </script>
 </body>
