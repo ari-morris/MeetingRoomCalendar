@@ -1,4 +1,84 @@
-<script src="https://cdn.jsdelivr.net/npm/rrule@2.8.1/dist/es5/rrule.min.js"></script>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Meeting Room</title>
+
+  <!-- FullCalendar -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+
+  <!-- Recurrence engine -->
+  <script src="https://cdn.jsdelivr.net/npm/rrule@2.8.1/dist/es5/rrule.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    #calendar {
+      height: calc(100vh - 150px);
+      font-size: 24px;
+    }
+
+    #pageHeader {
+      text-align: center;
+      font-size: 100px;
+      font-weight: 700;
+      padding: 12px 0;
+      border-bottom: 1px solid #ddd;
+    }
+
+    #dateTimeBar {
+      text-align: center;
+      font-size: 48px;
+      padding: 8px;
+      color: #444;
+    }
+
+    /* Row height */
+    .fc .fc-timegrid-slot {
+      height: 72px !important;
+    }
+
+    /* Time labels */
+    .fc .fc-timegrid-slot-label {
+      font-size: 27px !important;
+      font-weight: 600;
+    }
+
+    .fc .fc-timegrid-axis {
+      width: 130px !important;
+    }
+
+    .fc .fc-timegrid-axis-cushion {
+      font-size: 27px !important;
+      white-space: nowrap;
+      padding: 10px;
+    }
+
+    /* Events */
+    .fc .fc-event-title {
+      font-size: 18px !important;
+    }
+
+    .fc .fc-event {
+      font-size: 16px !important;
+    }
+
+    /* Hide day header */
+    .fc .fc-col-header {
+      display: none !important;
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="pageHeader">Meeting Room</div>
+<div id="dateTimeBar"></div>
+<div id="calendar"></div>
 
 <script>
 
@@ -46,6 +126,7 @@ document.addEventListener('DOMContentLoaded', function () {
     slotMaxTime: "19:00:00",
 
     slotDuration: "00:30:00",
+
     headerToolbar: false,
 
     slotLabelFormat: {
@@ -55,6 +136,7 @@ document.addEventListener('DOMContentLoaded', function () {
     },
 
     eventContent: function(arg) {
+
       const desc = (arg.event.extendedProps.description || "")
         .replace(/\n/g, " ")
         .replace(/\s+/g, " ")
@@ -83,6 +165,8 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   calendar.render();
+
+  // refresh every 5 min
   setInterval(() => calendar.refetchEvents(), 300000);
 });
 
@@ -117,6 +201,7 @@ async function fetchICS(fetchInfo, successCallback, failureCallback) {
 ========================= */
 
 function parseICS(data) {
+
   const unfolded = data.replace(/\r?\n[ \t]/g, "");
   const lines = unfolded.split(/\r?\n/);
 
@@ -156,7 +241,7 @@ function parseICS(data) {
 }
 
 /* =========================
-   EXPAND RECURRENCE (FULL)
+   EXPAND RECURRENCE
 ========================= */
 
 function expandRecurring(events) {
@@ -176,7 +261,6 @@ function expandRecurring(events) {
     const end = new Date(evt.end);
     const duration = end - start;
 
-    // non-recurring
     if (!evt.rrule) {
       result.push(formatEvent(evt, start, end));
       return;
@@ -242,3 +326,6 @@ function parseDate(value) {
 }
 
 </script>
+
+</body>
+</html>
