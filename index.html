@@ -261,25 +261,28 @@ function expandRecurring(events) {
     const end = new Date(evt.end);
     const duration = end - start;
 
-    // Non-recurring
+    // ✅ Non-recurring
     if (!evt.rrule) {
       result.push(formatEvent(evt, start, end));
       return;
     }
 
     try {
-      // 🔥 Build rule WITH DTSTART (critical fix)
-      const rule = RRule.fromString(evt.rrule);
 
-      // Inject correct start date
-      rule.options.dtstart = start;
+      // 🔥 Parse rule properly
+      const options = RRule.parseString(evt.rrule);
+
+      // 🔥 CRITICAL: inject DTSTART
+      options.dtstart = start;
+
+      const rule = new RRule(options);
 
       const dates = rule.between(windowStart, windowEnd, true);
 
-      // Handle EXDATE
+      // 🔥 Parse EXDATE properly
       const exdates = (evt.exdate || "")
         .split(",")
-        .map(d => parseDate(d));
+        .map(d => new Date(parseDate(d)).toISOString());
 
       dates.forEach(d => {
 
@@ -293,7 +296,7 @@ function expandRecurring(events) {
     } catch (e) {
       console.warn("RRULE failed:", evt.rrule, e);
 
-      // fallback: at least show original event
+      // fallback so calendar never goes blank
       result.push(formatEvent(evt, start, end));
     }
 
