@@ -23,7 +23,7 @@
       font-size: 100px;
       font-weight: 700;
       padding: 12px 0;
-      border-bottom: 1px solid #ddd;
+      border-bottom:none;
     }
 
     /* date + time bar */
@@ -123,7 +123,7 @@ function updateDateTime() {
  document.getElementById("dateTimeBar").innerHTML =
   `
     <div>${dateStr} • ${timeStr}</div>
-    <div class="info-label">Updates every 5  minutes. This page is in beta. Report issues to it@aahom.org.</div>
+    <div class="info-label">Updates every 5  minutes. (This page is in beta. Report issues to: it@aahom.org.)</div>
   `;
 }
 
