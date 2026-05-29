@@ -261,16 +261,22 @@ function expandRecurring(events) {
     const end = new Date(evt.end);
     const duration = end - start;
 
+    // Non-recurring
     if (!evt.rrule) {
       result.push(formatEvent(evt, start, end));
       return;
     }
 
     try {
+      // 🔥 Build rule WITH DTSTART (critical fix)
       const rule = RRule.fromString(evt.rrule);
+
+      // Inject correct start date
+      rule.options.dtstart = start;
 
       const dates = rule.between(windowStart, windowEnd, true);
 
+      // Handle EXDATE
       const exdates = (evt.exdate || "")
         .split(",")
         .map(d => parseDate(d));
@@ -286,6 +292,9 @@ function expandRecurring(events) {
 
     } catch (e) {
       console.warn("RRULE failed:", evt.rrule, e);
+
+      // fallback: at least show original event
+      result.push(formatEvent(evt, start, end));
     }
 
   });
