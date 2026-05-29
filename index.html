@@ -4,18 +4,14 @@
   <meta charset="utf-8" />
   <title>Meeting Room</title>
 
-  <!-- FullCalendar -->
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
-  <!-- RRule plugin -->
-  <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/rrule@6.1.11/index.global.min.js"></script>
-
-  <!-- Manual recurrence fallback -->
+  <!-- RRule engine -->
   <script src="https://cdn.jsdelivr.net/npm/rrule@2.8.1/dist/es5/rrule.min.js"></script>
 
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; }
+    body { margin:0; font-family:Arial; }
 
     #calendar {
       height: calc(100vh - 150px);
@@ -23,56 +19,51 @@
     }
 
     #pageHeader {
-      text-align: center;
-      font-size: 100px;
-      font-weight: 700;
-      padding: 12px 0;
-      border-bottom: 1px solid #ddd;
+      text-align:center;
+      font-size:100px;
+      font-weight:700;
+      padding:12px 0;
+      border-bottom:1px solid #ddd;
     }
 
     #dateTimeBar {
-      text-align: center;
-      font-size: 48px;
-      padding: 8px;
-      color: #444;
+      text-align:center;
+      font-size:48px;
+      padding:8px;
+      color:#444;
     }
 
-    .fc .fc-timegrid-slot { height: 72px !important; }
+    .fc .fc-timegrid-slot { height:72px !important; }
 
     .fc .fc-timegrid-slot-label {
-      font-size: 27px !important;
-      font-weight: 600;
+      font-size:27px !important;
+      font-weight:600;
     }
 
-    .fc .fc-timegrid-axis {
-      width: 130px !important;
-    }
+    .fc .fc-timegrid-axis { width:130px !important; }
 
     .fc .fc-timegrid-axis-cushion {
-      font-size: 27px !important;
-      padding: 10px;
-      white-space: nowrap;
+      font-size:27px !important;
+      padding:10px;
+      white-space:nowrap;
     }
 
-    .fc .fc-col-header {
-      display: none !important;
-    }
+    .fc .fc-col-header { display:none !important; }
   </style>
 </head>
 
 <body>
 
-<div id="pageHeader">Meeting Room inject</div>
+<div id="pageHeader">Meeting Room no, really</div>
 <div id="dateTimeBar"></div>
 <div id="calendar"></div>
 
 <script>
 
-const ICS_URL =
-"https://outlook.office365.com/owa/calendar/5ffdab88caa6494b83fdd5a68fd7ba2f@aahom.org/bce60bc8ad5945939494295b8daa01148196703426695370791/calendar.ics";
+const ICS_URL = "https://outlook.office365.com/owa/calendar/5ffdab88caa6494b83fdd5a68fd7ba2f@aahom.org/bce60bc8ad5945939494295b8daa01148196703426695370791/calendar.ics";
 
 /* =========================
-   DATE/TIME HEADER
+   CLOCK
 ========================= */
 
 function updateDateTime() {
@@ -110,49 +101,30 @@ document.addEventListener('DOMContentLoaded', function () {
 
     slotMinTime: "08:00:00",
     slotMaxTime: "19:00:00",
-    slotDuration: "00:30:00",
 
     headerToolbar: false,
 
-    visibleRange: function(currentDate) {
-      const start = new Date(currentDate);
-      start.setHours(0,0,0,0);
-
-      const end = new Date(currentDate);
-      end.setHours(23,59,59,999);
-
-      return { start, end };
-    },
-
-    eventDisplay: 'block',
-
-    eventDidMount: function(info) {
-      info.el.style.opacity = "1";
-    },
-
     slotLabelFormat: {
       hour: 'numeric',
-      minute: '2-digit',
-      hour12: true
+      minute: '2-digit'
     },
 
     eventContent: function(arg) {
       const desc = (arg.event.extendedProps.description || "")
-        .replace(/\n/g, " ")
-        .replace(/\s+/g, " ")
+        .replace(/\n/g," ")
         .trim()
-        .substring(0, 400);
+        .substring(0,400);
 
       return {
         html: `
-          <div style="padding:6px; line-height:1.3;">
-            <div style="font-weight:bold; font-size:26px;">
+          <div style="padding:6px;">
+            <div style="font-size:26px;font-weight:bold;">
               ${arg.event.title}
             </div>
-            <div style="font-size:18px; opacity:0.8;">
+            <div style="font-size:18px;">
               ${arg.timeText}
             </div>
-            ${desc ? `<div style="font-size:18px; margin-top:6px;">${desc}</div>` : ""}
+            ${desc ? `<div style="font-size:18px;">${desc}</div>` : ""}
           </div>
         `
       };
@@ -162,122 +134,99 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   calendar.render();
-
-  setInterval(() => calendar.refetchEvents(), 300000);
+  setInterval(()=>calendar.refetchEvents(),300000);
 });
 
 /* =========================
-   FETCH + HYBRID LOGIC
+   FETCH + FULL ENGINE
 ========================= */
 
 async function fetchICS(fetchInfo, successCallback, failureCallback) {
   try {
-    const proxy = "https://corsproxy.io/?";
-    const url = ICS_URL + "?nocache=" + Date.now();
 
-    const res = await fetch(proxy + encodeURIComponent(url));
+    const proxy = "https://corsproxy.io/?";
+    const res = await fetch(proxy + encodeURIComponent(ICS_URL + "?nocache=" + Date.now()));
     const text = await res.text();
 
     const parsed = parseICS(text);
+    const expanded = expandAll(parsed);
 
-    const finalEvents = [
-      ...buildNativeEvents(parsed),
-      ...injectPastRecurring(parsed)
-    ];
+    successCallback(expanded);
 
-    successCallback(finalEvents);
-
-  } catch (err) {
-    console.error(err);
-    failureCallback(err);
+  } catch (e) {
+    console.error(e);
+    failureCallback(e);
   }
 }
 
 /* =========================
-   NATIVE EVENTS (FullCalendar)
+   FULL OUTLOOK ENGINE
 ========================= */
 
-function buildNativeEvents(events) {
-
-  return events.map(e => {
-
-    const base = {
-      title: e.title,
-      extendedProps: {
-        description: e.description || ""
-      }
-    };
-
-    if (e.rrule) {
-      return {
-        ...base,
-        rrule: e.rrule,
-        dtstart: parseDate(e.start),
-        duration: getDuration(e.start, e.end) || 3600
-      };
-    }
-
-    return {
-      ...base,
-      start: parseDate(e.start),
-      end: parseDate(e.end)
-    };
-  });
-}
-
-/* =========================
-   🔥 HYBRID FIX (PAST EVENTS)
-========================= */
-
-function injectPastRecurring(events) {
+function expandAll(events) {
 
   const results = [];
+  const overrides = {};
+
   const now = new Date();
 
-  // 🔥 widen the window (critical fix)
   const windowStart = new Date(now);
-  windowStart.setDate(now.getDate() - 2); // go back 2 days
-  windowStart.setHours(0,0,0,0);
+  windowStart.setDate(now.getDate() - 2);
+
+  const windowEnd = new Date(now);
+  windowEnd.setDate(now.getDate() + 7);
+
+  // Separate overrides
+  events.forEach(e => {
+    if (e.recurrenceId) {
+      overrides[e.uid + "_" + e.recurrenceId] = e;
+    }
+  });
 
   events.forEach(e => {
 
-    if (!e.rrule || !e.start) return;
+    const start = new Date(parseDate(e.start));
+    const end = new Date(parseDate(e.end));
+    const duration = end - start;
+
+    // NON-RECURRING
+    if (!e.rrule) {
+      results.push(formatEvent(e, start, end));
+      return;
+    }
 
     try {
-      const dtstart = new Date(parseDate(e.start));
-
       const options = RRule.parseString(e.rrule);
-
-      // 🔥 CRITICAL: explicitly set DTSTART correctly
-      options.dtstart = dtstart;
-
-      // 🔥 ALSO ensure timezone consistency
-      options.tzid = undefined;
+      options.dtstart = start;
 
       const rule = new RRule(options);
 
-      const dates = rule.between(windowStart, now, true);
-
-      const duration = getDuration(e.start, e.end) || 3600;
+      const dates = rule.between(windowStart, windowEnd, true);
 
       dates.forEach(d => {
 
-        // 🔥 normalize to local time
-        const start = new Date(d);
-        const end = new Date(start.getTime() + duration * 1000);
+        const key = e.uid + "_" + d.toISOString();
 
-        results.push({
-          title: e.title,
-          start,
-          end,
-          extendedProps: {
-            description: e.description || ""
-          }
-        });
+        // Skip EXDATE
+        if (e.exdate && e.exdate.includes(d.toISOString().replace(/[-:]/g,"").split(".")[0])) {
+          return;
+        }
+
+        // Override instance
+        if (overrides[key]) {
+          const o = overrides[key];
+          results.push(formatEvent(o,
+            new Date(parseDate(o.start)),
+            new Date(parseDate(o.end))
+          ));
+          return;
+        }
+
+        results.push(formatEvent(e, d, new Date(d.getTime() + duration)));
       });
 
     } catch (err) {
-      console.warn("Fallback recurrence failed:", err, e);
+      console.warn("RRULE error", err);
     }
 
   });
@@ -286,7 +235,7 @@ function injectPastRecurring(events) {
 }
 
 /* =========================
-   ICS PARSER
+   PARSER (FULL)
 ========================= */
 
 function parseICS(data) {
@@ -299,30 +248,31 @@ function parseICS(data) {
 
   for (let line of lines) {
 
-    if (line.startsWith("BEGIN:VEVENT")) {
+    if (line === "BEGIN:VEVENT") {
       current = {};
       continue;
     }
 
-    if (line.startsWith("END:VEVENT")) {
-      if (current) events.push(current);
+    if (line === "END:VEVENT") {
+      events.push(current);
       current = null;
       continue;
     }
 
     if (!current) continue;
 
-    const parts = line.split(":");
-    if (parts.length < 2) continue;
+    const [rawKey, ...rest] = line.split(":");
+    const value = rest.join(":");
+    const key = rawKey.split(";")[0];
 
-    const key = parts[0].split(";")[0];
-    const value = parts.slice(1).join(":");
-
-    if (key === "SUMMARY") current.title = cleanICS(value);
+    if (key === "UID") current.uid = value;
+    if (key === "SUMMARY") current.title = clean(value);
     if (key === "DTSTART") current.start = value;
     if (key === "DTEND") current.end = value;
-    if (key === "DESCRIPTION") current.description = cleanICS(value);
+    if (key === "DESCRIPTION") current.description = clean(value);
     if (key === "RRULE") current.rrule = value;
+    if (key === "EXDATE") current.exdate = value;
+    if (key === "RECURRENCE-ID") current.recurrenceId = value;
   }
 
   return events;
@@ -332,31 +282,36 @@ function parseICS(data) {
    HELPERS
 ========================= */
 
-function getDuration(start, end) {
-  const s = new Date(parseDate(start));
-  const e = new Date(parseDate(end));
-  return (e - s) / 1000;
+function formatEvent(e, start, end) {
+  return {
+    title: e.title || "",
+    start,
+    end,
+    extendedProps: {
+      description: e.description || ""
+    }
+  };
 }
 
-function cleanICS(text) {
-  return text
-    .replace(/\\n/g, " ")
-    .replace(/\\,/g, ",")
-    .replace(/\\\\/g, "\\")
+function clean(t) {
+  return t
+    .replace(/\\n/g," ")
+    .replace(/\\,/g,",")
+    .replace(/\\\\/g,"\\")
     .trim();
 }
 
-function parseDate(value) {
-  if (!value) return null;
+function parseDate(v) {
+  if (!v) return null;
 
-  if (value.endsWith("Z")) {
-    return value.replace(
+  if (v.endsWith("Z")) {
+    return v.replace(
       /(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/,
       "$1-$2-$3T$4:$5:$6Z"
     );
   }
 
-  return value.replace(
+  return v.replace(
     /(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/,
     "$1-$2-$3T$4:$5:$6"
   );
