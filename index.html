@@ -76,7 +76,7 @@
 
 <body>
 
-<div id="pageHeader">Meeting Room</div>
+<div id="pageHeader">Meeting Room test</div>
 <div id="dateTimeBar"></div>
 <div id="calendar"></div>
 
@@ -259,43 +259,26 @@ function expandRecurring(events) {
     const end = new Date(evt.end);
     const duration = end - start;
 
-    // ✅ Non-recurring
-    if (!evt.rrule) {
-      result.push(formatEvent(evt, start, end));
-      return;
-    }
+    // Always include original event
+    result.push(formatEvent(evt, start, end));
+
+    // Skip if no recurrence
+    if (!evt.rrule) return;
 
     try {
-
-      // 🔥 Parse rule properly
       const options = RRule.parseString(evt.rrule);
-
-      // 🔥 CRITICAL: inject DTSTART
       options.dtstart = start;
 
       const rule = new RRule(options);
 
       const dates = rule.between(windowStart, windowEnd, true);
 
-      // 🔥 Parse EXDATE properly
-      const exdates = (evt.exdate || "")
-        .split(",")
-        .map(d => new Date(parseDate(d)).toISOString());
-
       dates.forEach(d => {
-
-        const iso = d.toISOString();
-
-        if (exdates.includes(iso)) return;
-
         result.push(formatEvent(evt, d, new Date(d.getTime() + duration)));
       });
 
     } catch (e) {
       console.warn("RRULE failed:", evt.rrule, e);
-
-      // fallback so calendar never goes blank
-      result.push(formatEvent(evt, start, end));
     }
 
   });
