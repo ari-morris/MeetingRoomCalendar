@@ -76,7 +76,7 @@
 
 <body>
 
-<div id="pageHeader">Meeting Room test2</div>
+<div id="pageHeader">Meeting Room test3</div>
 <div id="dateTimeBar"></div>
 <div id="calendar"></div>
 
@@ -313,9 +313,18 @@ function cleanICS(text) {
 function parseDate(value) {
   if (!value) return null;
 
+  // UTC format (ends with Z)
+  if (value.endsWith("Z")) {
+    return value.replace(
+      /(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/,
+      "$1-$2-$3T$4:$5:$6Z"
+    );
+  }
+
+  // LOCAL time (no Z) — treat as local
   return value.replace(
-    /(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/,
-    "$1-$2-$3T$4:$5:$6Z"
+    /(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/,
+    "$1-$2-$3T$4:$5:$6"
   );
 }
 
