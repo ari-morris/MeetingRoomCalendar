@@ -80,9 +80,10 @@
 }
 
     .info-label {
-  font-size: 22px;
+  font-size: 18px;
   color: #888;
   margin-top: 4px;
+      font-style: italic;
   font-weight: normal;
 }
   </style>
@@ -123,7 +124,7 @@ function updateDateTime() {
  document.getElementById("dateTimeBar").innerHTML =
   `
     <div>${dateStr} • ${timeStr}</div>
-    <div class="info-label">Updates every 5  minutes. (This page is in beta. Report issues to: it@aahom.org.)</div>
+    <div class="info-label"><p>Updates every 5  minutes. (This page is in beta. Report issues to: it@aahom.org.)</p></div>
   `;
 }
 
