@@ -8,8 +8,8 @@
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
-  <!-- Recurrence engine -->
-  <script src="https://cdn.jsdelivr.net/npm/rrule@2.8.1/dist/es5/rrule.min.js"></script>
+  <!-- RRule plugin (native FullCalendar support) -->
+  <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/rrule@6.1.11/index.global.min.js"></script>
 
   <style>
     body {
@@ -37,12 +37,10 @@
       color: #444;
     }
 
-    /* Row height */
     .fc .fc-timegrid-slot {
       height: 72px !important;
     }
 
-    /* Time labels */
     .fc .fc-timegrid-slot-label {
       font-size: 27px !important;
       font-weight: 600;
@@ -58,16 +56,6 @@
       padding: 10px;
     }
 
-    /* Events */
-    .fc .fc-event-title {
-      font-size: 18px !important;
-    }
-
-    .fc .fc-event {
-      font-size: 16px !important;
-    }
-
-    /* Hide day header */
     .fc .fc-col-header {
       display: none !important;
     }
@@ -76,7 +64,7 @@
 
 <body>
 
-<div id="pageHeader">Meeting Room test3</div>
+<div id="pageHeader">Meeting Room w/recurrance</div>
 <div id="dateTimeBar"></div>
 <div id="calendar"></div>
 
@@ -166,12 +154,11 @@ document.addEventListener('DOMContentLoaded', function () {
 
   calendar.render();
 
-  // refresh every 5 min
   setInterval(() => calendar.refetchEvents(), 300000);
 });
 
 /* =========================
-   FETCH ICS
+   FETCH + PARSE ICS
 ========================= */
 
 async function fetchICS(fetchInfo, successCallback, failureCallback) {
@@ -179,15 +166,12 @@ async function fetchICS(fetchInfo, successCallback, failureCallback) {
     const proxy = "https://corsproxy.io/?";
     const url = ICS_URL + "?nocache=" + Date.now();
 
-    const res = await fetch(proxy + encodeURIComponent(url), {
-      cache: "no-store"
-    });
-
+    const res = await fetch(proxy + encodeURIComponent(url));
     const text = await res.text();
 
     const events = parseICS(text);
-const expanded = expandRecurring(events);
-successCallback(expanded);
+
+    successCallback(events);
 
   } catch (err) {
     console.error(err);
@@ -196,7 +180,7 @@ successCallback(expanded);
 }
 
 /* =========================
-   PARSE ICS
+   SIMPLE ICS PARSER
 ========================= */
 
 function parseICS(data) {
@@ -215,7 +199,33 @@ function parseICS(data) {
     }
 
     if (line.startsWith("END:VEVENT")) {
-      if (current) events.push(current);
+
+      if (current) {
+
+        const base = {
+          title: cleanICS(current.title || ""),
+          extendedProps: {
+            description: cleanICS(current.description || "")
+          }
+        };
+
+        // 🔥 If recurring → use FullCalendar RRule
+        if (current.rrule) {
+          events.push({
+            ...base,
+            rrule: current.rrule,
+            dtstart: parseDate(current.start),
+            duration: getDuration(current.start, current.end)
+          });
+        } else {
+          events.push({
+            ...base,
+            start: parseDate(current.start),
+            end: parseDate(current.end)
+          });
+        }
+      }
+
       current = null;
       continue;
     }
@@ -228,78 +238,24 @@ function parseICS(data) {
     const key = parts[0].split(";")[0];
     const value = parts.slice(1).join(":");
 
-    if (key === "SUMMARY") current.title = cleanICS(value);
-    if (key === "DTSTART") current.start = parseDate(value);
-    if (key === "DTEND") current.end = parseDate(value);
-    if (key === "DESCRIPTION") current.description = cleanICS(value);
+    if (key === "SUMMARY") current.title = value;
+    if (key === "DTSTART") current.start = value;
+    if (key === "DTEND") current.end = value;
+    if (key === "DESCRIPTION") current.description = value;
     if (key === "RRULE") current.rrule = value;
-    if (key === "EXDATE") current.exdate = value;
   }
 
   return events;
 }
 
 /* =========================
-   EXPAND RECURRENCE
-========================= */
-
-function expandRecurring(events) {
-
-  const result = [];
-
-  const now = new Date();
-  const windowStart = new Date(now);
-  windowStart.setDate(now.getDate() - 1);
-
-  const windowEnd = new Date(now);
-  windowEnd.setDate(now.getDate() + 7);
-
-  events.forEach(evt => {
-
-    const start = new Date(evt.start);
-    const end = new Date(evt.end);
-    const duration = end - start;
-
-    // Always include original event
-    result.push(formatEvent(evt, start, end));
-
-    // Skip if no recurrence
-    if (!evt.rrule) return;
-
-    try {
-      const options = RRule.parseString(evt.rrule);
-      options.dtstart = start;
-
-      const rule = new RRule(options);
-
-      const dates = rule.between(windowStart, windowEnd, true);
-
-      dates.forEach(d => {
-        result.push(formatEvent(evt, d, new Date(d.getTime() + duration)));
-      });
-
-    } catch (e) {
-      console.warn("RRULE failed:", evt.rrule, e);
-    }
-
-  });
-
-  return result;
-}
-
-/* =========================
    HELPERS
 ========================= */
 
-function formatEvent(evt, start, end) {
-  return {
-    title: evt.title || "",
-    start,
-    end,
-    extendedProps: {
-      description: evt.description || ""
-    }
-  };
+function getDuration(start, end) {
+  const s = new Date(parseDate(start));
+  const e = new Date(parseDate(end));
+  return (e - s) / 1000; // seconds
 }
 
 function cleanICS(text) {
@@ -313,7 +269,6 @@ function cleanICS(text) {
 function parseDate(value) {
   if (!value) return null;
 
-  // UTC format (ends with Z)
   if (value.endsWith("Z")) {
     return value.replace(
       /(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/,
@@ -321,7 +276,6 @@ function parseDate(value) {
     );
   }
 
-  // LOCAL time (no Z) — treat as local
   return value.replace(
     /(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})/,
     "$1-$2-$3T$4:$5:$6"
