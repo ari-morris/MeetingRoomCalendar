@@ -8,8 +8,11 @@
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
 
-  <!-- FullCalendar RRule plugin -->
+  <!-- RRule plugin -->
   <script src="https://cdn.jsdelivr.net/npm/@fullcalendar/rrule@6.1.11/index.global.min.js"></script>
+
+  <!-- Manual recurrence fallback -->
+  <script src="https://cdn.jsdelivr.net/npm/rrule@2.8.1/dist/es5/rrule.min.js"></script>
 
   <style>
     body { margin: 0; font-family: Arial, sans-serif; }
@@ -59,7 +62,7 @@
 
 <body>
 
-<div id="pageHeader">Meeting Room with duration</div>
+<div id="pageHeader">Meeting Room hybrid</div>
 <div id="dateTimeBar"></div>
 <div id="calendar"></div>
 
@@ -69,7 +72,7 @@ const ICS_URL =
 "https://outlook.office365.com/owa/calendar/5ffdab88caa6494b83fdd5a68fd7ba2f@aahom.org/bce60bc8ad5945939494295b8daa01148196703426695370791/calendar.ics";
 
 /* =========================
-   DATE / TIME HEADER
+   DATE/TIME HEADER
 ========================= */
 
 function updateDateTime() {
@@ -111,7 +114,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     headerToolbar: false,
 
-    /* 🔥 SHOW FULL DAY (fix for missing earlier events) */
     visibleRange: function(currentDate) {
       const start = new Date(currentDate);
       start.setHours(0,0,0,0);
@@ -122,7 +124,6 @@ document.addEventListener('DOMContentLoaded', function () {
       return { start, end };
     },
 
-    /* 🔥 Ensure events render even if past */
     eventDisplay: 'block',
 
     eventDidMount: function(info) {
@@ -136,7 +137,6 @@ document.addEventListener('DOMContentLoaded', function () {
     },
 
     eventContent: function(arg) {
-
       const desc = (arg.event.extendedProps.description || "")
         .replace(/\n/g, " ")
         .replace(/\s+/g, " ")
@@ -152,10 +152,7 @@ document.addEventListener('DOMContentLoaded', function () {
             <div style="font-size:18px; opacity:0.8;">
               ${arg.timeText}
             </div>
-            ${desc ? `
-              <div style="font-size:18px; margin-top:6px;">
-                ${desc}
-              </div>` : ""}
+            ${desc ? `<div style="font-size:18px; margin-top:6px;">${desc}</div>` : ""}
           </div>
         `
       };
@@ -170,7 +167,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 /* =========================
-   FETCH ICS
+   FETCH + HYBRID LOGIC
 ========================= */
 
 async function fetchICS(fetchInfo, successCallback, failureCallback) {
@@ -181,7 +178,14 @@ async function fetchICS(fetchInfo, successCallback, failureCallback) {
     const res = await fetch(proxy + encodeURIComponent(url));
     const text = await res.text();
 
-    successCallback(parseICS(text));
+    const parsed = parseICS(text);
+
+    const finalEvents = [
+      ...buildNativeEvents(parsed),
+      ...injectPastRecurring(parsed)
+    ];
+
+    successCallback(finalEvents);
 
   } catch (err) {
     console.error(err);
@@ -190,7 +194,85 @@ async function fetchICS(fetchInfo, successCallback, failureCallback) {
 }
 
 /* =========================
-   PARSE ICS
+   NATIVE EVENTS (FullCalendar)
+========================= */
+
+function buildNativeEvents(events) {
+
+  return events.map(e => {
+
+    const base = {
+      title: e.title,
+      extendedProps: {
+        description: e.description || ""
+      }
+    };
+
+    if (e.rrule) {
+      return {
+        ...base,
+        rrule: e.rrule,
+        dtstart: parseDate(e.start),
+        duration: getDuration(e.start, e.end) || 3600
+      };
+    }
+
+    return {
+      ...base,
+      start: parseDate(e.start),
+      end: parseDate(e.end)
+    };
+  });
+}
+
+/* =========================
+   🔥 HYBRID FIX (PAST EVENTS)
+========================= */
+
+function injectPastRecurring(events) {
+
+  const results = [];
+  const now = new Date();
+
+  const startWindow = new Date(now);
+  startWindow.setHours(0,0,0,0);
+
+  events.forEach(e => {
+
+    if (!e.rrule) return;
+
+    try {
+      const options = RRule.parseString(e.rrule);
+      options.dtstart = new Date(parseDate(e.start));
+
+      const rule = new RRule(options);
+
+      const dates = rule.between(startWindow, now, true);
+
+      const duration = getDuration(e.start, e.end) || 3600;
+
+      dates.forEach(d => {
+        results.push({
+          title: e.title,
+          start: d,
+          end: new Date(d.getTime() + duration * 1000),
+          extendedProps: {
+            description: e.description || ""
+          }
+        });
+      });
+
+    } catch (err) {
+      console.warn("Fallback recurrence failed", err);
+    }
+
+  });
+
+  return results;
+}
+
+/* =========================
+   ICS PARSER
 ========================= */
 
 function parseICS(data) {
@@ -209,34 +291,7 @@ function parseICS(data) {
     }
 
     if (line.startsWith("END:VEVENT")) {
-
-      if (current) {
-
-        const base = {
-          title: cleanICS(current.title || ""),
-          extendedProps: {
-            description: cleanICS(current.description || "")
-          }
-        };
-
-        const durationSeconds = getDuration(current.start, current.end) || 3600;
-
-        if (current.rrule) {
-          events.push({
-            ...base,
-            rrule: current.rrule,
-            dtstart: parseDate(current.start),
-            duration: durationSeconds
-          });
-        } else {
-          events.push({
-            ...base,
-            start: parseDate(current.start),
-            end: parseDate(current.end)
-          });
-        }
-      }
-
+      if (current) events.push(current);
       current = null;
       continue;
     }
@@ -249,10 +304,10 @@ function parseICS(data) {
     const key = parts[0].split(";")[0];
     const value = parts.slice(1).join(":");
 
-    if (key === "SUMMARY") current.title = value;
+    if (key === "SUMMARY") current.title = cleanICS(value);
     if (key === "DTSTART") current.start = value;
     if (key === "DTEND") current.end = value;
-    if (key === "DESCRIPTION") current.description = value;
+    if (key === "DESCRIPTION") current.description = cleanICS(value);
     if (key === "RRULE") current.rrule = value;
   }
 
